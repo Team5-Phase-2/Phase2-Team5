@@ -4,4 +4,4 @@
 - Asem Ibrahim
 - Jaeyun Kim
 - Jun Lim
-
+- Kendall Lanning
