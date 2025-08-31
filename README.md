@@ -2,5 +2,6 @@
 
 # Members
 -Asem Ibrahim
-
+-Jaeyun Kim
+-Jun Lim
 
