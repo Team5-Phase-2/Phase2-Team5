@@ -19,7 +19,6 @@ elif [ -f "$CMD" ]; then
   exit 0
 
 else
-  # NEW: forward whatever the user typed to your CLI
-  PYTHONPATH=. python3 -m src.cli "$@"
-  exit 0
+  echo "Usage: ./run install | ./run test | ./run /abs/path/to/URL_FILE" 1>&2
+  exit 1
 fi
