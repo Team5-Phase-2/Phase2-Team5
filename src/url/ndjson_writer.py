@@ -3,7 +3,8 @@ from __future__ import annotations
 import json
 import sys
 from typing import TextIO
-from .router import ModelItem
+from src.url.router import ModelItem
+from src.scoring import score_model, _hf_model_id_from_url
 
 REQUIRED_RECORD_TEMPLATE = {
     "name": "",  # model name/url
@@ -26,14 +27,40 @@ REQUIRED_RECORD_TEMPLATE = {
     "code_quality": 0.0, "code_quality_latency": 0,
 }
 
+#class NdjsonWriter:
+#    def __init__(self, out: TextIO | None = None) -> None:
+#        self.out = out or sys.stdout
+#
+#   def write(self, item: ModelItem) -> None:
+#        rec = dict(REQUIRED_RECORD_TEMPLATE)
+#        rec["name"] = item.model_url
+#        # these two fields are NOT required by the spec; kept to help later stages:
+#        rec["_linked_datasets"] = item.datasets
+#        rec["_linked_code"] = item.code
+#        self.out.write(json.dumps(rec) + "\n")
 class NdjsonWriter:
     def __init__(self, out: TextIO | None = None) -> None:
         self.out = out or sys.stdout
 
     def write(self, item: ModelItem) -> None:
+        # 1) compute metrics (parallel + timed inside)
+        metrics = score_model(item.model_url, cache_dir=".cache_hf", parallelism=8)
+
+        # 2) build required record
         rec = dict(REQUIRED_RECORD_TEMPLATE)
-        rec["name"] = item.model_url
-        # these two fields are NOT required by the spec; kept to help later stages:
-        rec["_linked_datasets"] = item.datasets
-        rec["_linked_code"] = item.code
-        self.out.write(json.dumps(rec) + "\n")
+        rec["name"] = _hf_model_id_from_url(item.model_url)  # canonical org/name
+        rec["category"] = "MODEL"
+        rec.update(metrics)
+
+        # 3) (optional) attach context fields the spec allows (“linked …”)
+        if item.datasets:
+            rec["linked_datasets"] = item.datasets
+            # small “bonus” to dataset_and_code_score if links exist
+            rec["dataset_and_code_score"] = max(rec["dataset_and_code_score"], 0.5)
+        if item.code:
+            rec["linked_code"] = item.code
+            rec["dataset_and_code_score"] = max(rec["dataset_and_code_score"], 1.0 if item.datasets else 0.5)
+
+        # 4) print one NDJSON object
+        self.out.write(json.dumps(rec, ensure_ascii=True) + "\n")
+        self.out.flush()
