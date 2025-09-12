@@ -1,0 +1,5 @@
+cat > urls.txt << 'EOF'
+https://huggingface.co/datasets/foo/bar
+https://github.com/acme/repo
+https://huggingface.co/google/gemma-3-270m
+EOF

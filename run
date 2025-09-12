@@ -53,7 +53,7 @@ fi
 
 elif [ -f "$CMD" ]; then
   # treat argument as a URL_FILE
-  PYTHONPATH=. python3 -m src.url_main "$CMD" || exit 1
+  PYTHONPATH=. python3 -m src.url.url_main "$CMD" || exit 1
   exit 0
 
 else

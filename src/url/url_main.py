@@ -28,8 +28,8 @@ Integration with ./run:
 from __future__ import annotations
 import sys
 from typing import Iterator
-from url.router import UrlRouter
-from url.ndjson_writer import NdjsonWriter
+from src.url.router import UrlRouter
+from src.url.ndjson_writer import NdjsonWriter
 
 def iter_urls_from_file(path: str) -> Iterator[str]:
     with open(path, "rt", encoding="utf-8") as f:
