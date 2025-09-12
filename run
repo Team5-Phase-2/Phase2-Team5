@@ -1,0 +1,24 @@
+#!/usr/bin/env bash
+set -e
+
+CMD="$1"
+
+if [ "$CMD" = "install" ]; then
+  # install dependencies for your project
+  python3 -m pip install --user -r requirements.txt
+  exit 0
+
+elif [ "$CMD" = "test" ]; then
+  # run your tests (replace with pytest/unittest command your team uses)
+  python3 -m pytest -q || exit 1
+  exit 0
+
+elif [ -f "$CMD" ]; then
+  # treat argument as a URL_FILE
+  PYTHONPATH=. python3 -m src.url_main "$CMD" || exit 1
+  exit 0
+
+else
+  echo "Usage: ./run install | ./run test | ./run /abs/path/to/URL_FILE" 1>&2
+  exit 1
+fi
