@@ -1,4 +1,31 @@
 # src/url/ndjson_writer.py
+"""
+ndjson_writer.py
+----------------
+
+This module prints one JSON object (NDJSON line) for each ModelItem.
+
+Classes:
+- NdjsonWriter: writes ModelItem data to stdout (or any file-like object).
+
+Behavior:
+- Uses REQUIRED_RECORD_TEMPLATE to guarantee all fields exist
+  (name, category, net_score, latencies, etc.)
+- Currently fills everything with default values (0.0 or 0).
+- Adds _linked_datasets and _linked_code to help teammates later,
+  though these fields are not required by the spec.
+
+
+Example output:
+    {"name": "https://huggingface.co/google/gemma-3-270m",
+     "category": "MODEL",
+     "net_score": 0.0,
+     "license": 0.0,
+     ...,
+     "_linked_datasets": ["https://huggingface.co/datasets/xlangai/AgentNet"],
+     "_linked_code": ["https://github.com/SkyworkAI/Matrix-Game"]}
+"""
+
 from __future__ import annotations
 import json
 import sys

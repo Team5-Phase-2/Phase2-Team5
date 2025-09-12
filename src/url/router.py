@@ -1,6 +1,38 @@
 #group datasets & code with the next model
 
 # src/url/router.py
+
+"""
+router.py
+---------
+
+This module groups datasets and code with the next model URL.
+
+Classes:
+- ModelItem: a container (dataclass) holding one model URL plus any
+  dataset/code URLs that came before it.
+- UrlRouter: consumes a list of URLs, classifies them, and yields ModelItem
+  objects for each model.
+
+Logic:
+- DATASET → stash in a list until a model appears
+- CODE    → stash in a list until a model appears
+- MODEL   → create a ModelItem with the stashed datasets and code, then clear
+- UNKNOWN → log a warning (if LOG_LEVEL > 0)
+
+Example:
+    Input URLs:
+        dataset1
+        code1
+        modelA
+        code2
+        modelB
+
+    Output:
+        ModelItem(modelA, datasets=[dataset1], code=[code1])
+        ModelItem(modelB, datasets=[], code=[code2])
+"""
+
 from __future__ import annotations
 from dataclasses import dataclass, field
 import os
