@@ -32,6 +32,7 @@ import sys
 from typing import TextIO
 from src.url.router import ModelItem
 from src.scoring import score_model, _hf_model_id_from_url
+from src.metrics_framework import MetricsCalculator
 
 REQUIRED_RECORD_TEMPLATE = {
     "name": "",  # model name/url
@@ -68,6 +69,7 @@ REQUIRED_RECORD_TEMPLATE = {
 class NdjsonWriter:
     def __init__(self, out: TextIO | None = None) -> None:
         self.out = out or sys.stdout
+        self.calc = MetricsCalculator()
 
     def write(self, item: ModelItem) -> None:
         # 1) compute metrics (parallel + timed inside)
@@ -78,6 +80,46 @@ class NdjsonWriter:
         rec["name"] = _hf_model_id_from_url(item.model_url)  # canonical org/name
         rec["category"] = "MODEL"
         rec.update(metrics)
+
+        # overwrite license with real metric (README -> license section)
+        lic_res = self.calc.metrics["license"].calculate(item.model_url)
+        rec["license"] = round(float(lic_res.score), 3)
+        rec["license_latency"] = int(lic_res.latency_ms)
+
+        sz_res = self.calc.metrics["size_score"].calculate(item.model_url)
+        has_size = (sz_res.score is not None)
+        if has_size:
+            sz = float(sz_res.score)
+            rec["size_score"] = {
+                "raspberry_pi": sz,
+                "jetson_nano": sz,
+                "desktop_pc": sz,
+                "aws_server": sz,
+            }
+        rec["size_score_latency"] = int(sz_res.latency_ms)
+
+        # recompute net_score (preliminary averaging over finished metrics)
+        try:
+            parts = []
+            latencies = []
+
+            #ramp_up_time (dummy)
+            parts.append(float(rec.get("ramp_up_time", 0.0)))
+            latencies.append(int(rec.get("ramp_up_time_latency", 0) or 0))
+
+            #license
+            parts.append(float(rec.get("license", 0.0)))
+            latencies.append(int(rec.get("license_latency", 0) or 0))
+
+            #size ('None' if unknown)
+            if has_size:
+                parts.append(float(rec["size_score"]["desktop_pc"]))
+                latencies.append(int(rec.get("size_score_latency", 0) or 0))
+
+            rec["net_score"] = round(sum(parts) / len(parts), 3) if parts else 0.0
+            rec["net_score_latency"] = int(max(latencies) if latencies else 0)
+        except Exception:
+            pass # keep existing net_score if something odd happens
 
         # 3) (optional) attach context fields the spec allows (“linked …”)
         if item.datasets:
