@@ -34,6 +34,9 @@ from src.url.router import ModelItem
 from src.scoring import score_model, _hf_model_id_from_url
 from src.metrics_framework import MetricsCalculator
 
+from src.metrics_framework import PerformanceClaimsMetric 
+
+
 REQUIRED_RECORD_TEMPLATE = {
     "name": "",  # model name/url
     "category": "MODEL",
@@ -71,6 +74,8 @@ class NdjsonWriter:
         self.out = out or sys.stdout
         self.calc = MetricsCalculator()
 
+        self.perf_metric = PerformanceClaimsMetric()
+
     def write(self, item: ModelItem) -> None:
         # 1) compute metrics (parallel + timed inside)
         metrics = score_model(item.model_url, cache_dir=".cache_hf", parallelism=8)
@@ -97,6 +102,21 @@ class NdjsonWriter:
                 "aws_server": sz,
             }
         rec["size_score_latency"] = int(sz_res.latency_ms)
+
+        # ---- performance_claims (standalone 0.0 or 1.0) ----
+        try:
+            pc_res = self.perf_metric.calculate(item.model_url)   # returns MetricResult
+            score = float(pc_res.score) if (pc_res and pc_res.score is not None) else 0.0
+            # force it to strict 0.0 / 1.0
+            rec["performance_claims"] = 1.0 if score >= 0.5 else 0.0
+            rec["performance_claims_latency"] = int(pc_res.latency_ms or 0)
+        except Exception:
+            # fail-safe: no claims detected / fetch failed
+            rec["performance_claims"] = 0.0
+            rec["performance_claims_latency"] = 0
+
+
+
 
         # recompute net_score (preliminary averaging over finished metrics)
         try:

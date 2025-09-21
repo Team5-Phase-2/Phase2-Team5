@@ -7,6 +7,29 @@ import time
 import re
 import requests
 
+#==========HELPER for Performance Metric=============================
+PERF_KEYWORDS = [
+    "accuracy","f1","precision","recall","auc","bleu","rouge",
+    "mse","rmse","mae","perplexity","wer","cer","map",
+    "results","benchmark","evaluation","eval","score"
+]
+
+def _fetch_hf_readme_text(model_url: str) -> str:
+    """Fetch raw README.md text from a Hugging Face model repo."""
+    try:
+        model_id = _hf_model_id_from_url(model_url)  # e.g., "owner/repo"
+        owner, repo = model_id.split("/", 1)
+        raw_url = f"https://huggingface.co/{owner}/{repo}/raw/main/README.md"
+        r = requests.get(raw_url, timeout=10)
+        if r.status_code == 200:
+            return r.text or ""
+        return ""
+    except Exception:
+        return ""
+#=================================================================
+
+
+
 @dataclass
 class MetricResult:
     score: Optional[float]  # optional to allow for None if calculation failed
@@ -97,8 +120,14 @@ class PerformanceClaimsMetric(BaseMetric):
         super().__init__("performance_claims")
     
     def _calculate_score(self, model_url: str) -> Optional[float]:
-        
-        return 1
+        text = _fetch_hf_readme_text(model_url)
+        if not text.strip():
+            return 0.0  # no README → no claims
+        for kw in PERF_KEYWORDS:
+            if re.search(rf"\b{re.escape(kw)}\b", text, flags=re.IGNORECASE):
+                return 1.0
+        return 0.0
+
 
 class SizeMetric(BaseMetric):
     def __init__(self):

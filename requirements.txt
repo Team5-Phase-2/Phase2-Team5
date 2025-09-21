@@ -10,3 +10,6 @@ mypy
 # Hugging Face ecosystem
 transformers
 huggingface_hub
+
+
+requests
