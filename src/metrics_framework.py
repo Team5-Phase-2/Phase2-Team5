@@ -2,11 +2,13 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import Dict, Optional
-from scoring import _hf_model_id_from_url
+from .scoring import _hf_model_id_from_url
+from datetime import datetime
 import time
 import re
 import requests
 import math
+
 
 #==========HELPER for Performance Metric=============================
 PERF_KEYWORDS = [
@@ -102,10 +104,44 @@ class RampUpTimeMetric(BaseMetric):
 class BusFactorMetric(BaseMetric):
     def __init__(self):
         super().__init__("bus_factor")
-    
+
     def _calculate_score(self, model_url: str) -> Optional[float]:
-        
-        return 1
+
+        model_id = _hf_model_id_from_url(model_url)
+        if "/" not in model_id or model_id.startswith("http"):
+            return 0.0  # unknown ⇒ conservative
+
+        try:
+            r = requests.get(f"https://huggingface.co/api/models/{model_id}", timeout=10)
+            if r.status_code != 200:
+                return 0.0
+            info = r.json()
+
+            # ---- downloads → log-normalized in [0,1]
+            downloads = 0
+            try:
+                downloads = int(info.get("downloads") or 0)
+            except Exception:
+                downloads = 0
+            downloads_norm = min(1.0, math.log10(1 + downloads) / 6.0)
+
+            # ---- lastModified → freshness in [0,1]
+            last_mod = info.get("lastModified")
+            age_days = 365.0  # default stale
+            if isinstance(last_mod, str):
+                # '2025-03-01T12:34:56.789Z' → make it ISO compatible
+                s = last_mod.replace("Z", "+00:00")
+                try:
+                    dt = datetime.fromisoformat(s)
+                    age_days = max(0.0, (time.time() - dt.timestamp()) / 86400.0)
+                except Exception:
+                    age_days = 365.0
+            freshness = max(0.0, min(1.0, 1.0 - (age_days / 365.0)))
+
+            return round(0.6 * downloads_norm + 0.4 * freshness, 3)
+        except Exception:
+            return 0.0
+
 
 class LicenseMetric(BaseMetric):
     def __init__(self):

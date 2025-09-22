@@ -95,7 +95,18 @@ class NdjsonWriter:
         except Exception:
             # keep whatever score_model produced; set latency to 0 if needed
             rec["ramp_up_time_latency"] = int(rec.get("ramp_up_time_latency", 0) or 0)
-            
+
+         # ---- bus_factor: overwrite with our concrete metric ----
+        try:
+            bf_res = self.calc.metrics["bus_factor"].calculate(item.model_url)
+            if bf_res.score is not None:
+                rec["bus_factor"] = round(float(bf_res.score), 3)
+            rec["bus_factor_latency"] = int(bf_res.latency_ms)
+        except Exception:
+            # keep value from score_model if present; ensure latency key exists
+            rec["bus_factor_latency"] = int(rec.get("bus_factor_latency", 0) or 0)
+
+
         # overwrite license with real metric (README -> license section)
         lic_res = self.calc.metrics["license"].calculate(item.model_url)
         rec["license"] = round(float(lic_res.score), 3)
