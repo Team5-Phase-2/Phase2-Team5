@@ -4,16 +4,36 @@ from typing import Dict, Any
 import random
 import re
 
-def _hf_model_id_from_url(url: str) -> str:
+def _hf_model_id_from_url(model_url: str) -> str:
     """
-    Minimal normalization so the same URL yields stable random scores.
-    If it's a HF model URL like https://huggingface.co/org/name(/...),
-    we return 'org/name'. Otherwise we just return the input string.
+    Extract Hugging Face model ID from URL correctly
     """
-    m = re.match(r"^https?://huggingface\.co/(?!datasets/)([^/]+)/([^/\s]+)", url.strip())
-    if m:
-        return f"{m.group(1)}/{m.group(2)}"
-    return url.strip()
+    # If it's already just a model ID (no URL), return as is
+    if not model_url.startswith(('http://', 'https://')):
+        return model_url
+    
+    # Remove protocol and domain
+    if 'huggingface.co/' in model_url:
+        # Extract everything after huggingface.co/
+        parts = model_url.split('huggingface.co/')
+        if len(parts) > 1:
+            model_id = parts[1]
+            # Remove any trailing slashes or query parameters
+            model_id = model_id.rstrip('/')
+            if '?' in model_id:
+                model_id = model_id.split('?')[0]
+            if '#' in model_id:
+                model_id = model_id.split('#')[0]
+            return model_id
+    
+    # Fallback: try to extract using regex
+    import re
+    match = re.search(r'huggingface\.co/([^/?&#]+)', model_url)
+    if match:
+        return match.group(1)
+    
+    # If all else fails, return the original (though it will probably fail)
+    return model_url
 
 def score_model(model_url: str, *, cache_dir: str | None = None, parallelism: int = 8) -> Dict[str, Any]:
     """

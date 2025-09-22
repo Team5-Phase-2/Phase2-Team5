@@ -2,7 +2,7 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import Dict, Optional
-from src.scoring import _hf_model_id_from_url
+from scoring import _hf_model_id_from_url
 import time
 import re
 import requests
@@ -188,13 +188,98 @@ class DatasetQualityMetric(BaseMetric):
        
         return 1
     
+import tempfile
+import subprocess
+import os
+from typing import Optional
+
 class CodeQualityMetric(BaseMetric):
     def __init__(self):
         super().__init__("code_quality")
     
     def _calculate_score(self, model_url: str) -> Optional[float]:
-      
-        return 1
+        model_id = _hf_model_id_from_url(model_url)
+     
+        try:
+            # Get list of files from Hugging Face API
+            api_url = f"https://huggingface.co/api/models/{model_id}"
+            response = requests.get(api_url, timeout=10)
+            if response.status_code != 200:
+                return None
+            
+            files_data = response.json().get('siblings', [])
+           
+            
+            # Filter for Python files
+            python_files = []
+            for file_info in files_data:
+                filename = file_info.get('rfilename', '')
+                if filename and filename.endswith('.py'):
+                    python_files.append(filename)
+            
+            if not python_files:
+                return 0.5  # No Python files found
+            
+            # Analyze each Python file
+            scores = []
+            for python_file in python_files:
+                file_url = f"https://huggingface.co/{model_id}/raw/main/{python_file}"
+                file_response = requests.get(file_url, timeout=10)
+                if file_response.status_code == 200:
+                    score = self._analyze_with_pylint(file_response.text, python_file)
+                    if score is not None:
+                        scores.append(score)
+            
+            return sum(scores) / len(scores) if scores else 0.5
+            
+        except Exception:
+            return None
+    
+    def _analyze_with_pylint(self, code_content: str, filename: str) -> Optional[float]:
+        """
+        Analyze a single Python file's content using pylint
+        Returns normalized score (0.0 to 1.0) or None if analysis fails
+        """
+        # Create a temporary file with the code content
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False) as temp_file:
+            temp_file.write(code_content)
+            temp_file_path = temp_file.name
+        
+        try:
+            # Run pylint on the temporary file
+            result = subprocess.run(
+                ['pylint', '--output-format=text', '--score=yes', temp_file_path],
+                capture_output=True,
+                text=True,
+                timeout=30  # shorter timeout for single files
+            )
+            
+            # Parse the pylint score from output
+            return self._parse_pylint_score(result.stdout)
+            
+        except subprocess.TimeoutExpired:
+            return None
+        except Exception:
+            return None
+        finally:
+            # Clean up temporary file
+            try:
+                os.unlink(temp_file_path)
+            except:
+                pass
+    
+    def _parse_pylint_score(self, output: str) -> Optional[float]:
+        """Parse pylint score from output and normalize to 0.0-1.0 range"""
+        for line in output.split('\n'):
+            if 'Your code has been rated at' in line:
+                try:
+                    # Extract the numeric score (e.g., "8.50/10")
+                    parts = line.split('rated at')[-1].strip().split('/')
+                    raw_score = float(parts[0])
+                    return max(0.0, min(1.0, raw_score / 10.0))
+                except (ValueError, IndexError):
+                    continue
+        return None
 
 class MetricsCalculator:
     
@@ -241,3 +326,15 @@ class MetricsCalculator:
                 total_weight += weight
         
         return round(net_score / total_weight, 3) if total_weight > 0 else 0.0
+    
+# Quick test
+metric = CodeQualityMetric()
+
+# Test with a known model
+test_url ="https://huggingface.co/facebook/bart-large"
+
+print(f"Testing: {test_url}")
+
+result = metric.calculate(test_url)
+print(f"Score: {result.score}")
+print(f"Latency: {result.latency_ms}ms") 
