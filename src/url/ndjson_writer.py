@@ -85,7 +85,17 @@ class NdjsonWriter:
         rec["name"] = _hf_model_id_from_url(item.model_url)  # canonical org/name
         rec["category"] = "MODEL"
         rec.update(metrics)
-
+       # ---- ramp_up_time: overwrite with our concrete metric ----
+        try:
+            ru_res = self.calc.metrics["ramp_up_time"].calculate(item.model_url)
+            if ru_res.score is not None:
+                rec["ramp_up_time"] = round(float(ru_res.score), 3)
+            # always record latency we measured
+            rec["ramp_up_time_latency"] = int(ru_res.latency_ms)
+        except Exception:
+            # keep whatever score_model produced; set latency to 0 if needed
+            rec["ramp_up_time_latency"] = int(rec.get("ramp_up_time_latency", 0) or 0)
+            
         # overwrite license with real metric (README -> license section)
         lic_res = self.calc.metrics["license"].calculate(item.model_url)
         rec["license"] = round(float(lic_res.score), 3)
