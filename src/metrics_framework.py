@@ -6,6 +6,7 @@ from scoring import _hf_model_id_from_url
 import time
 import re
 import requests
+import math
 
 #==========HELPER for Performance Metric=============================
 PERF_KEYWORDS = [
@@ -62,8 +63,41 @@ class RampUpTimeMetric(BaseMetric):
         super().__init__("ramp_up_time")
     
     def _calculate_score(self, model_url: str) -> Optional[float]:
-        
-        return 1
+        # Normalize to org/name like your other metrics do
+        model_id = _hf_model_id_from_url(model_url)
+        if "/" not in model_id or model_id.startswith("http"):
+            return None  # no signal for non-HF model refs
+
+        try:
+            r = requests.get(f"https://huggingface.co/api/models/{model_id}", timeout=10)
+            if r.status_code != 200:
+                return None  # network/API issue → let caller renormalize
+            info = r.json()
+        except Exception:
+            return None  # on any fetch error, produce no score
+
+        # --- Signals ---
+        # 1) Popularity proxy: likes (log-compressed to 0..1)
+        likes = int(info.get("likes") or 0)
+        likes_score = min(1.0, max(0.0, (math.log10(1 + likes) / 3.0)))  # ~1.0 near ~1k likes
+
+        # 2) Ease-of-start proxy: README or model card present
+        siblings = info.get("siblings") or []
+        has_readme = any((s.get("rfilename") or "").lower() == "readme.md" for s in siblings)
+        has_card = bool(info.get("cardData"))
+        readme_score = 1.0 if (has_readme or has_card) else 0.3
+
+        # 3) Tiny bonus if tags suggest examples/tutorials
+        tags = [str(t).lower() for t in (info.get("tags") or [])]
+        examples_bonus = 0.1 if any(("example" in t or "tutorial" in t) for t in tags) else 0.0
+
+        # Combine & clamp
+        score = 0.6 * readme_score + 0.4 * likes_score + examples_bonus
+        score = min(1.0, max(0.0, score))
+
+        # Round for stable output like your other fields
+        return round(score, 3)
+
 
 class BusFactorMetric(BaseMetric):
     def __init__(self):
