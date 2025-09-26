@@ -162,6 +162,16 @@ class NdjsonWriter:
         except Exception:
             pass # keep existing net_score if something odd happens
 
+        # ---- code_quality metric ----
+        try:
+            cq_res = self.calc.metrics["code_quality"].calculate(item.model_url)
+            if cq_res.score is not None:
+                rec["code_quality"] = round(float(cq_res.score), 3)
+                rec["code_quality_latency"] = int(cq_res.latency_ms)
+        except Exception as e:
+            # fallback: keep whatever is already there (default 0.0), set latency 0
+            rec["code_quality_latency"] = int(rec.get("code_quality_latency", 0) or 0)
+
         # 3) (optional) attach context fields the spec allows (“linked …”)
         if item.datasets:
             rec["linked_datasets"] = item.datasets
@@ -174,12 +184,4 @@ class NdjsonWriter:
         # 4) print one NDJSON object
         self.out.write(json.dumps(rec, ensure_ascii=True) + "\n")
         self.out.flush()
-        # ---- code_quality metric ----
-        try:
-            cq_res = self.calc.metrics["code_quality"].calculate(item.model_url)
-            if cq_res.score is not None:
-                rec["code_quality"] = round(float(cq_res.score), 3)
-            rec["code_quality_latency"] = int(cq_res.latency_ms)
-        except Exception as e:
-            # fallback: keep whatever is already there (default 0.0), set latency 0
-            rec["code_quality_latency"] = int(rec.get("code_quality_latency", 0) or 0)
+        
