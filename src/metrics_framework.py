@@ -397,3 +397,4 @@ class MetricsCalculator:
         
         return round(net_score / total_weight, 3) if total_weight > 0 else 0.0
     
+
