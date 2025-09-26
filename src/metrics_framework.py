@@ -303,7 +303,7 @@ class CodeQualityMetric(BaseMetric):
             return sum(scores) / len(scores) if scores else 0.5
             
         except Exception:
-            return None
+            return 0
     
     def _analyze_with_pylint(self, code_content: str, filename: str) -> Optional[float]:
         """
@@ -397,15 +397,4 @@ class MetricsCalculator:
         
         return round(net_score / total_weight, 3) if total_weight > 0 else 0.0
     
-'''# Quick test
-metric = CodeQualityMetric()
 
-# Test with a known model
-test_url ="https://huggingface.co/facebook/bart-large"
-
-print(f"Testing: {test_url}")
-
-result = metric.calculate(test_url)
-print(f"Score: {result.score}")
-print(f"Latency: {result.latency_ms}ms") 
-'''
