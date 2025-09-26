@@ -1,0 +1,63 @@
+#!/usr/bin/env bash
+set -e
+set -euo pipefail
+
+CMD="$1"
+
+if [ "$CMD" = "install" ]; then
+  # install dependencies for your project
+  python3 -m pip install --user -r requirements.txt
+  exit 0
+
+elif [ "$CMD" = "test" ]; then
+  # always start fresh
+  rm -f test_output.txt
+
+  # run pytest with coverage, tee all output into test_output.txt
+  PYTHONPATH=. python3 -m pytest \
+    --maxfail=1 --disable-warnings \
+    --cov=src --cov-report=term-missing \
+    2>&1 | tee test_output.txt
+
+  # now parse test_output.txt for summary
+  COLLECTED=$(grep -Eo 'collected[[:space:]]+[0-9]+' test_output.txt | awk '{print $2}')
+  : "${COLLECTED:=0}"
+
+PASSED=$(grep -Eo '[0-9]+ passed' test_output.txt | tail -n 1 | awk '{print $1}')
+FAILED=$(grep -Eo '[0-9]+ failed' test_output.txt | tail -n 1 | awk '{print $1}')
+
+  ERRORS=$(echo "$SUMMARY_LINE" | grep -Eo '[0-9]+ error' | awk '{print $1}')
+  ERRORS2=$(echo "$SUMMARY_LINE" | grep -Eo '[0-9]+ errors' | awk '{print $1}')
+
+  : "${PASSED:=0}"; : "${FAILED:=0}"; : "${ERRORS:=0}"; : "${ERRORS2:=0}"
+
+  if [ "$COLLECTED" -gt 0 ] 2>/dev/null; then
+    TOTAL="$COLLECTED"
+  else
+    TOTAL=$((PASSED + FAILED + ERRORS + ERRORS2))
+  fi
+
+  COVERAGE=$(grep -E '^TOTAL[[:space:]]' test_output.txt | awk '{print $NF}' | tr -d '%')
+  : "${COVERAGE:=0}"
+
+  echo "${PASSED}/${TOTAL} test cases passed. ${COVERAGE}% line coverage achieved."
+
+  FAILCOUNT=$((FAILED + ERRORS + ERRORS2))
+  if [ "$FAILCOUNT" -gt 0 ]; then
+    exit 1
+  else
+    exit 0
+  fi
+
+
+
+
+elif [ -f "$CMD" ]; then
+  # treat argument as a URL_FILE
+  PYTHONPATH=. python3 -m src.url.url_main "$CMD" || exit 1
+  exit 0
+
+else
+  echo "Usage: ./run install | ./run test | ./run /abs/path/to/URL_FILE" 1>&2
+  exit 1
+fi

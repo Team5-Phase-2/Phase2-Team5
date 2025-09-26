@@ -397,7 +397,7 @@ class MetricsCalculator:
         
         return round(net_score / total_weight, 3) if total_weight > 0 else 0.0
     
-# Quick test
+'''# Quick test
 metric = CodeQualityMetric()
 
 # Test with a known model
@@ -408,3 +408,4 @@ print(f"Testing: {test_url}")
 result = metric.calculate(test_url)
 print(f"Score: {result.score}")
 print(f"Latency: {result.latency_ms}ms") 
+'''
