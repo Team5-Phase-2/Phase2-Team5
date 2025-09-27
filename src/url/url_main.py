@@ -43,6 +43,7 @@ def run_url_file(url_file: str) -> int:
     writer = NdjsonWriter()
     for item in router.route(iter_urls_from_file(url_file)):
         writer.write(item)
+    print("test")
     return 0
 
 if __name__ == "__main__":

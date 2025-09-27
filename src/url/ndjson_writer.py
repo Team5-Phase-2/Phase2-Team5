@@ -161,16 +161,7 @@ class NdjsonWriter:
             rec["net_score_latency"] = int(max(latencies) if latencies else 0)
         except Exception:
             pass # keep existing net_score if something odd happens
-
-        # 3) (optional) attach context fields the spec allows (“linked …”)
-        if item.datasets:
-            rec["linked_datasets"] = item.datasets
-            # small “bonus” to dataset_and_code_score if links exist
-            rec["dataset_and_code_score"] = max(rec["dataset_and_code_score"], 0.5)
-        if item.code:
-            rec["linked_code"] = item.code
-            rec["dataset_and_code_score"] = max(rec["dataset_and_code_score"], 1.0 if item.datasets else 0.5)
-
+        
         # 4) print one NDJSON object
         self.out.write(json.dumps(rec, ensure_ascii=True) + "\n")
         self.out.flush()
