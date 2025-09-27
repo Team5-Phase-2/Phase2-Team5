@@ -288,16 +288,125 @@ class DatasetCodeMetric(BaseMetric):
         super().__init__("dataset_and_code_score")
     
     def _calculate_score(self, model_url: str) -> Optional[float]:
-       
-        return 1
+        model_id = _hf_model_id_from_url(model_url)
+        # Only apply to valid Hugging Face model identifiers.
+        if "/" not in model_id or model_id.startswith("http"):
+            return 0.0
+
+        dataset_available = False
+        code_available = False
+
+        try:
+            # Fetch the model's metadata from the HF API
+            api_resp = requests.get(
+                f"https://huggingface.co/api/models/{model_id}", timeout=10
+            )
+            if api_resp.status_code == 200:
+                info = api_resp.json()
+                card = info.get("cardData") or {}
+                # Check for datasets field in the card
+                datasets = card.get("datasets") or []
+                if isinstance(datasets, list) and len(datasets) > 0:
+                    dataset_available = True
+
+                # Inspect repository file listing for Python files
+                siblings = info.get("siblings") or []
+                for s in siblings:
+                    filename = (s.get("rfilename") or "").lower()
+                    if filename.endswith(".py"):
+                        code_available = True
+                        break
+
+            # If we didn't find Python files, look for code snippets in the README
+            if not code_available:
+                readme_text = _fetch_hf_readme_text(model_url)
+                if readme_text:
+                    # A fenced code block (```some code```) implies code availability
+                    if "```" in readme_text:
+                        code_available = True
+                    else:
+                        lowered = readme_text.lower()
+                        # Keywords commonly used in sections containing example code
+                        for kw in [
+                            "example",
+                            "usage",
+                            "import",
+                            "code snippet",
+                            "how to use",
+                        ]:
+                            if kw in lowered:
+                                code_available = True
+                                break
+        except Exception:
+            # On error, fail conservatively
+            return 0.0
+
+        # Determine final score per rules
+        if dataset_available and code_available:
+            return 1.0
+        if dataset_available or code_available:
+            return 0.5
+        return 0.0
 
 class DatasetQualityMetric(BaseMetric):
     def __init__(self):
         super().__init__("dataset_quality")
     
     def _calculate_score(self, model_url: str) -> Optional[float]:
-       
-        return 1
+        readme = _fetch_hf_readme_text(model_url)
+        if not readme.strip():
+            return 0.0
+
+        # Try to extract a dataset section from the README
+        ds_match = re.search(
+            r"(?im)^[ \t]*#{1,6}[ \t]*dataset(s)?[^\n]*\n(.*?)(?=^[ \t]*#{1,6}[ \t]+\S|\Z)",
+            readme,
+            flags=re.DOTALL,
+        )
+        if not ds_match:
+            return 0.0  # no dataset section found
+
+        dataset_section = ds_match.group(2).lower()
+
+        # Define keywords for each dimension
+        integrity_keywords = [
+            "integrity",
+            "trustworthy",
+            "clean",
+            "quality",
+            "verified",
+            "uncorrupted",
+            "honest",
+        ]
+        completeness_keywords = [
+            "complete",
+            "full",
+            "coverage",
+            "no missing",
+            "all records",
+            "complete dataset",
+        ]
+        consistency_keywords = [
+            "consistent",
+            "uniform",
+            "normalized",
+            "standardized",
+            "same across",
+        ]
+
+        # Check for keyword presence
+        integrity_score = any(k in dataset_section for k in integrity_keywords)
+        completeness_score = any(k in dataset_section for k in completeness_keywords)
+        consistency_score = any(k in dataset_section for k in consistency_keywords)
+
+        # Compute a normalized score: average of the three factors
+        total = int(integrity_score) + int(completeness_score) + int(consistency_score)
+        if total == 0:
+            return 0.0
+        return round(total / 3.0, 3)
+    
+
+
 
 class CodeQualityMetric(BaseMetric):
     def __init__(self):
@@ -339,7 +448,7 @@ class CodeQualityMetric(BaseMetric):
             return sum(scores) / len(scores) if scores else 0.5
             
         except Exception:
-            return 0
+            return None
     
     def _analyze_with_pylint(self, code_content: str, filename: str) -> Optional[float]:
         """
