@@ -8,7 +8,9 @@ import time
 import re
 import requests
 import math
-
+import tempfile
+import subprocess
+import os
 
 #==========HELPER for Performance Metric=============================
 PERF_KEYWORDS = [
@@ -100,7 +102,6 @@ class RampUpTimeMetric(BaseMetric):
         # Round for stable output like your other fields
         return round(score, 3)
 
-
 class BusFactorMetric(BaseMetric):
     def __init__(self):
         super().__init__("bus_factor")
@@ -142,48 +143,89 @@ class BusFactorMetric(BaseMetric):
         except Exception:
             return 0.0
 
-
 class LicenseMetric(BaseMetric):
     def __init__(self):
         super().__init__("license")
     
-    def _calculate_score(self, model_url: str) -> Optional[float]:
-        model_id = _hf_model_id_from_url(model_url)
-
-        if "/" not in model_id or model_id.startswith("http"):
-            return 0.5 # unclear license
-        
-        # fetch readme
-        readme_url = f"https://huggingface.co/{model_id}/raw/main/README.md"
-        try:
-            resp = requests.get(readme_url, timeout=10)
-            if resp.status_code != 200 or not resp.text:
-                return 0.5 # unclear license -> 0.5
-            md = resp.text
-        except Exception:
-            return 0.5 # unclear license -> 0.5
-        
-        m = re.search(
-            r"(?im)^[ \t]*#{1,6}[ \t]*license\b[^\n]*\n(.*?)(?=^[ \t]*#{1,6}[ \t]+\S|\Z)",
-            md,
-            flags=re.DOTALL,
+    def _calculate_score(self, model_url: str) -> float:
+        """
+        Map a license string to a normalized score (no Hugging Face API used).
+          1.0 = permissive AND LGPL-2.1 compatible (e.g., MIT, Apache-2.0, BSD, MPL-2.0, LGPL-2.1)
+          0.5 = unclear / custom / policy-dependent (e.g., OpenRAIL, LGPL-3.0, CC-BY-SA, model EULAs)
+          0.0 = restrictive or incompatible (e.g., GPL/AGPL, Non-Commercial, No-Derivatives, Proprietary)
+        """
+        # Hardcoded regexes for common licenses, grouped by permissiveness
+        licenses_restrictive = (
+            r"\bagpl(?:-?3(?:\.0)?)?(?:-only|-or-later|\+)?\b",
+            r"\bgpl(?:-?2(?:\.0)?|-?3(?:\.0)?)(?:-only|-or-later|\+)?\b",
+            r"\bgplv2\b", r"\bgplv3\b",
+            r"\bcc-?by-?nc\b", r"\bcc-?nc\b", r"\bnon[-\s]?commercial\b", r"\bnoncommercial\b",
+            r"\bresearch[-\s]?only\b", r"\bresearch[-\s]?use\b",
+            r"\bno[-\s]?derivatives?\b",
+            r"\bproprietary\b", r"\bclosed[-\s]?source\b",
         )
-        if not m:
-            return 0.5  # no explicit License section (unclear) -> 0.5
-        
-        section = m.group(1).lower()
+        licenses_unclear = (
+            r"\bllama[-\s]?2\b", r"\bmeta[-\s]?llama\b", r"\bllama[-\s]?2[-\s]?community[-\s]?license\b",
+            r"\bgemma\b", r"\bgemma[-\s]?terms\b", r"\btii[-\s]?falcon[-\s]?license\b",
+            r"\bqwen[-\s]?license\b",
+            r"\bopenrail(?:-[ml])?\b", r"\bopen[-\s]?rail\b",
+            r"\bcc[-\s]?by[-\s]?sa\b", r"\bshare[-\s]?alike\b",
+            r"\blgpl[-\s]?3(?:\.0)?\b",
+        )
+        licenses_permissive = (
+            r"\bmit\b",
+            r"\bapache(?:-|\s)?(?:license[-\s]?)?(?:version[-\s]?)?2(?:\.0)?\b", r"\bapache2\b",
+            r"\bbsd\b", r"\bbsd-2-clause\b", r"\bbsd-3-clause\b",
+            r"\bmpl(?:-|\s)?2(?:\.0)?\b", r"\bmozilla[-\s]?public[-\s]?license[-\s]?2(?:\.0)?\b",
+            r"\blgpl(?:-?2\.1)(?:-only|-or-later|\+)?\b",
+            r"\bcc[-\s]?by\b", r"\bcc[-\s]?by[-\s]?4\.0\b", r"\bcc0\b",
+            r"\bcreative[-\s]?commons[-\s]?zero\b",
+            r"\bunlicense\b",
+        )
 
-        # Compatible: explicitly mentions "lgpl" AND "2.1" in the License section
-        if ("lgpl" in section) and re.search(r"\b2\.1\b", section):
-            return 1.0
+        # Hardcoded regexes for known LGPL-2.1 compatible licenses
+        licenses_compatible = (
+            r"\bmit\b",
+            r"\bapache(?:-|\s)?(?:license[-\s]?)?(?:version[-\s]?)?2(?:\.0)?\b", r"\bapache2\b",
+            r"\bbsd\b", r"\bbsd-2-clause\b", r"\bbsd-3-clause\b",
+            r"\bcc0\b", r"\bcreative[-\s]?commons[-\s]?zero\b",
+            r"\bcc[-\s]?by\b", r"\bcc[-\s]?by[-\s]?4\.0\b",
+            r"\bunlicense\b",
+            r"\blgpl(?:-?2\.1)(?:-only|-or-later|\+)?\b",
+            r"\bmpl(?:-|\s)?2(?:\.0)?\b",
+        )
         
-        # Incompatible: mentions AGPL/GPL (without the 'L'), or proprietary / non-commercial / no license
-        if ("lgpl" not in section) and re.search(r"\b(?:agpl|gpl)\b", section):
-            return 0.0
-        if re.search(r"\bproprietary\b|\bnon[- ]?commercial\b|\bno license\b", section):
-            return 0.0
-        
-        return 0.5  # unclear license -> 0.5
+        license_score = 0.5 # default (unclear)
+        license_text = ""
+        # Extract "License" text from README
+        model_id = _hf_model_id_from_url(model_url)
+        if "/" in model_id and not model_id.startswith("http"):
+            readme_text = _fetch_hf_readme_text(model_url)
+            if readme_text:
+                match = re.search(
+                    r"(?im)^[ \t]*#{1,6}[ \t]*licens(?:e|ing)\b[^\n]*\n(.*?)(?=^[ \t]*#{1,6}[ \t]+\S|\Z)",
+                    readme_text,
+                    flags=re.DOTALL,
+                )
+                if match:
+                    license_text = match.group(1).strip().lower()
+
+            if license_text:
+                license_text = re.sub(r"[\s_]+", "-", license_text)
+
+                # Assigning score based on license type
+                if any(re.search(pattern, license_text) for pattern in licenses_restrictive):
+                    license_score = 0.0 # restrictive
+                elif any(re.search(pattern, license_text) for pattern in licenses_unclear):
+                    license_score = 0.5 # unclear
+                elif any(re.search(pattern, license_text) for pattern in licenses_permissive):
+                    license_score = 1.0 # permissive
+
+                # Double-check for LGPL-2.1 compatibility (only if score == 1.0)
+                if license_score == 1.0 and not any(re.search(p, license_text) for p in licenses_compatible):
+                    license_score = 0.0 # permissive but incompatible, downgrade to 0.0
+
+        return license_score
     
 class PerformanceClaimsMetric(BaseMetric):
     def __init__(self):
@@ -197,7 +239,6 @@ class PerformanceClaimsMetric(BaseMetric):
             if re.search(rf"\b{re.escape(kw)}\b", text, flags=re.IGNORECASE):
                 return 1.0
         return 0.0
-
 
 class SizeMetric(BaseMetric):
     def __init__(self):
@@ -257,11 +298,6 @@ class DatasetQualityMetric(BaseMetric):
     def _calculate_score(self, model_url: str) -> Optional[float]:
        
         return 1
-    
-import tempfile
-import subprocess
-import os
-from typing import Optional
 
 class CodeQualityMetric(BaseMetric):
     def __init__(self):
@@ -396,5 +432,3 @@ class MetricsCalculator:
                 total_weight += weight
         
         return round(net_score / total_weight, 3) if total_weight > 0 else 0.0
-    
-
