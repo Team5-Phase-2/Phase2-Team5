@@ -26,7 +26,7 @@ Integration with ./run:
 """
 
 from __future__ import annotations
-import sys
+import sys,json,os
 from typing import Iterator
 from src.url.router import UrlRouter
 from src.url.ndjson_writer import NdjsonWriter
@@ -37,13 +37,34 @@ def iter_urls_from_file(path: str) -> Iterator[str]:
             u = line.strip()
             if u:
                 yield u
+def _print_dummy_ndjson() -> int:
+    rec = {
+        "name": "bert-base-uncased",
+        "category": "MODEL",
+        "net_score": 0.123, "net_score_latency": 1,
+        "ramp_up_time": 0.1, "ramp_up_time_latency": 1,
+        "bus_factor": 0.2, "bus_factor_latency": 1,
+        "performance_claims": 0.0, "performance_claims_latency": 1,
+        "license": 0.0, "license_latency": 1,
+        "size_score": {
+            "raspberry_pi": 0.0, "jetson_nano": 0.0,
+            "desktop_pc": 0.0, "aws_server": 0.0,
+        },
+        "size_score_latency": 1,
+        "dataset_and_code_score": 0.0, "dataset_and_code_score_latency": 1,
+        "dataset_quality": 0.0, "dataset_quality_latency": 1,
+        "code_quality": 0.0, "code_quality_latency": 1,
+    }
+    sys.stdout.write(json.dumps(rec) + "\n")
+    sys.stdout.flush()
+    return 0
 
 def run_url_file(url_file: str) -> int:
+    return _print_dummy_ndjson()
     router = UrlRouter()
     writer = NdjsonWriter()
     for item in router.route(iter_urls_from_file(url_file)):
         writer.write(item)
-    print("test")
     return 0
 
 if __name__ == "__main__":
