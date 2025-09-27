@@ -69,7 +69,7 @@ class RampUpTimeMetric(BaseMetric):
     def _calculate_score(self, model_url: str) -> Optional[float]:
         # Normalize to org/name like your other metrics do
         model_id = _hf_model_id_from_url(model_url)
-        if "/" not in model_id or model_id.startswith("http"):
+        if model_id.startswith("http"):
             return None  # no signal for non-HF model refs
 
         try:
@@ -109,7 +109,7 @@ class BusFactorMetric(BaseMetric):
     def _calculate_score(self, model_url: str) -> Optional[float]:
 
         model_id = _hf_model_id_from_url(model_url)
-        if "/" not in model_id or model_id.startswith("http"):
+        if model_id.startswith("http"):
             return 0.0  # unknown ⇒ conservative
 
         try:
@@ -199,7 +199,7 @@ class LicenseMetric(BaseMetric):
         license_text = ""
         # Extract "License" text from README
         model_id = _hf_model_id_from_url(model_url)
-        if "/" in model_id and not model_id.startswith("http"):
+        if not model_id.startswith("http"):
             readme_text = _fetch_hf_readme_text(model_url)
             if readme_text:
                 match = re.search(
@@ -246,7 +246,7 @@ class SizeMetric(BaseMetric):
     
     def _calculate_score(self, model_url: str) -> Optional[float]:
         model_id = _hf_model_id_from_url(model_url)
-        if "/" not in model_id or model_id.startswith("http"):
+        if model_id.startswith("http"):
             return None  # unknown size
         
         try:
@@ -290,7 +290,7 @@ class DatasetCodeMetric(BaseMetric):
     def _calculate_score(self, model_url: str) -> Optional[float]:
         model_id = _hf_model_id_from_url(model_url)
         # Only apply to valid Hugging Face model identifiers.
-        if "/" not in model_id or model_id.startswith("http"):
+        if model_id.startswith("http"):
             return 0.0
 
         dataset_available = False
