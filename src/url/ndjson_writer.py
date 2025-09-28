@@ -14,12 +14,12 @@ from src.metrics_framework import PerformanceClaimsMetric
 REQUIRED_RECORD_TEMPLATE = {
     "name": "",  # model name/url
     "category": "",
-    "net_score": 1.0,
+    "net_score": 0.0,
     "net_score_latency": 0,
-    "ramp_up_time": 1.0, "ramp_up_time_latency": 0,
-    "bus_factor": 1.0, "bus_factor_latency": 0,
-    "performance_claims": 1.0, "performance_claims_latency": 0,
-    "license": 1.0, "license_latency": 0,
+    "ramp_up_time": 0.0, "ramp_up_time_latency": 0,
+    "bus_factor": 0.0, "bus_factor_latency": 0,
+    "performance_claims": 0.0, "performance_claims_latency": 0,
+    "license": 0.0, "license_latency": 0,
     "size_score": {
         "raspberry_pi": 0.0,
         "jetson_nano": 0.0,
@@ -27,9 +27,9 @@ REQUIRED_RECORD_TEMPLATE = {
         "aws_server": 0.0,
     },
     "size_score_latency": 0,
-    "dataset_and_code_score": 1.0, "dataset_and_code_score_latency": 0,
-    "dataset_quality": 1.0, "dataset_quality_latency": 0,
-    "code_quality": 1.0, "code_quality_latency": 0,
+    "dataset_and_code_score": 0.0, "dataset_and_code_score_latency": 0,
+    "dataset_quality": 0.0, "dataset_quality_latency": 0,
+    "code_quality": 0.0, "code_quality_latency": 0,
 }
 
 #class NdjsonWriter:
