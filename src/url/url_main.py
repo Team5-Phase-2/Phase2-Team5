@@ -84,6 +84,8 @@ from src.url.ndjson_writer import NdjsonWriter, REQUIRED_RECORD_TEMPLATE
 from src.scoring import _hf_model_id_from_url
 
 
+
+
 def setup_logging() -> logging.Logger:
     """
     Optional file logging controlled by LOG_FILE + LOG_LEVEL.
@@ -113,6 +115,7 @@ def setup_logging() -> logging.Logger:
 
     if level == "0":
         # Touch file but keep it blank
+        fh.setLevel(logging.CRITICAL + 1)
         try:
             open(log_path, "a").close()
         except OSError:
