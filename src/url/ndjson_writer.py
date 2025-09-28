@@ -71,7 +71,7 @@ REQUIRED_RECORD_TEMPLATE = {
 #        self.out.write(json.dumps(rec) + "\n")
 class NdjsonWriter:
     def __init__(self, out: TextIO | None = None) -> None:
-        self.out = out or sys.stdout
+        #self.out = out or sys.stdout
         self.calc = MetricsCalculator()
 
         self.perf_metric = PerformanceClaimsMetric()
@@ -182,6 +182,6 @@ class NdjsonWriter:
             rec["dataset_and_code_score"] = max(rec["dataset_and_code_score"], 1.0 if item.datasets else 0.5)
 
         # 4) print one NDJSON object
-        self.out.write(json.dumps(rec, ensure_ascii=True) + "\n")
-        self.out.flush()
+        sys.stdout.write(json.dumps(rec) + "\n")
+        sys.stdout.flush()
         
