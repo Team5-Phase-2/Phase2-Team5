@@ -42,9 +42,9 @@ from .classify import classify
 @dataclass
 class ModelItem:
     model_url: str
-    datasets: List[str] = field(default_factory=list)
-    code: List[str] = field(default_factory=list)
-
+    #datasets: List[str] = field(default_factory=list)
+    #code: List[str] = field(default_factory=list)
+'''
 class UrlRouter:
     def __init__(self) -> None:
         self._pending_ds: List[str] = []
@@ -79,3 +79,13 @@ class UrlRouter:
             if log_path:
                 with open(log_path, "a", encoding="utf-8") as fp:
                     fp.write(msg + "\n")
+'''
+class UrlRouter:
+    def route(self, urls: Iterable[str]) -> Iterator[ModelItem]:
+        for raw in urls:
+            u = raw.strip()
+            if not u:
+                continue
+            if classify(u) == "MODEL":
+                # simplest: ignore datasets/code entirely in Phase 1
+                yield ModelItem(model_url=u)
