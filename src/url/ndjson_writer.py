@@ -1,30 +1,4 @@
 # src/url/ndjson_writer.py
-"""
-ndjson_writer.py
-----------------
-
-This module prints one JSON object (NDJSON line) for each ModelItem.
-
-Classes:
-- NdjsonWriter: writes ModelItem data to stdout (or any file-like object).
-
-Behavior:
-- Uses REQUIRED_RECORD_TEMPLATE to guarantee all fields exist
-  (name, category, net_score, latencies, etc.)
-- Currently fills everything with default values (0.0 or 0).
-- Adds _linked_datasets and _linked_code to help teammates later,
-  though these fields are not required by the spec.
-
-
-Example output:
-    {"name": "https://huggingface.co/google/gemma-3-270m",
-     "category": "MODEL",
-     "net_score": 0.0,
-     "license": 0.0,
-     ...,
-     "_linked_datasets": ["https://huggingface.co/datasets/xlangai/AgentNet"],
-     "_linked_code": ["https://github.com/SkyworkAI/Matrix-Game"]}
-"""
 
 from __future__ import annotations
 import json,os
@@ -125,16 +99,18 @@ class NdjsonWriter:
         rec["size_score_latency"] = int(sz_res.latency_ms)
 
         # ---- performance_claims (standalone 0.0 or 1.0) ----
+
         try:
-            pc_res = self.perf_metric.calculate(item.model_url)   # returns MetricResult
+            pc_res = self.perf_metric.calculate(item.model_url)
             score = float(pc_res.score) if (pc_res and pc_res.score is not None) else 0.0
-            # force it to strict 0.0 / 1.0
-            rec["performance_claims"] = 1.0 if score >= 0.5 else 0.0
+            # keep metric’s own value; just clamp and round
+            score = max(0.0, min(1.0, score))
+            rec["performance_claims"] = round(score, 3)
             rec["performance_claims_latency"] = int(pc_res.latency_ms or 0)
         except Exception:
-            # fail-safe: no claims detected / fetch failed
             rec["performance_claims"] = 0.0
             rec["performance_claims_latency"] = 0
+
 
             # ---- code_quality metric ----
         try:
