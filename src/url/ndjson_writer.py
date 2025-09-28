@@ -12,8 +12,8 @@ from src.metrics_framework import MetricsCalculator
 from src.metrics_framework import PerformanceClaimsMetric 
 
 REQUIRED_RECORD_TEMPLATE = {
-    "name": "bert-base-uncased",  # model name/url
-    "category": "MODEL",
+    "name": "",  # model name/url
+    "category": "",
     "net_score": 0.0,
     "net_score_latency": 0,
     "ramp_up_time": 0.0, "ramp_up_time_latency": 0,
@@ -57,7 +57,8 @@ class NdjsonWriter:
 
         # 2) build required record
         rec = dict(REQUIRED_RECORD_TEMPLATE)
-        rec["name"] = hf_model_repo_name(item.model_url)  # canonical org/name
+        #rec["name"] = hf_model_repo_name(item.model_url)  # canonical org/name
+        rec["name"] = "bert-base-uncased"
         rec["category"] = "MODEL"
         #rec.update(metrics)
        # ---- ramp_up_time: overwrite with our concrete metric ----
