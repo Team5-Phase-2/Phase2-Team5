@@ -177,8 +177,8 @@ class NdjsonWriter:
             pass # keep existing net_score if something odd happens
         
         '''
-    
-     # 4) print one NDJSON object
+        
         sys.stdout.write(json.dumps(rec) + "\n")
         sys.stdout.flush()
+
         
