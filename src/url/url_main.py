@@ -1,3 +1,4 @@
+"""
 # src/url_main.py
 import os, sys, logging
 from typing import Iterator
@@ -69,5 +70,134 @@ def run_url_file(url_file: str) -> int:
 if __name__ == "__main__":
     if len(sys.argv) != 2:
         print("usage: python -m src.url_main /abs/path/to/URL_FILE", file=sys.stderr)
+        sys.exit(1)
+    sys.exit(run_url_file(sys.argv[1]))
+"""
+
+import os
+import sys
+import logging
+from typing import Iterator, Iterable
+
+# Package-aware imports (ensure src/__init__.py and src/url/__init__.py exist)
+from src.url.router import UrlRouter
+from src.url.ndjson_writer import NdjsonWriter
+
+
+def setup_logging() -> logging.Logger:
+    """
+    File logging is optional and NEVER contaminates stdout.
+    If LOG_FILE is invalid/unwritable, we warn to stderr and continue.
+    LOG_LEVEL: "0" (silent), "1" (INFO), anything else (DEBUG).
+    """
+    level = os.getenv("LOG_LEVEL", "0")
+    log_path = os.getenv("LOG_FILE")
+
+    logger = logging.getLogger("ece461")
+    logger.handlers.clear()
+    logger.propagate = False
+    logger.setLevel(logging.DEBUG)  # handler will filter
+
+    if not log_path:
+        return logger  # console logging disabled entirely
+
+    try:
+        fh = logging.FileHandler(log_path, mode="w", encoding="utf-8")
+    except OSError:
+        print("Invalid log file path; continuing without file logging", file=sys.stderr)
+        return logger
+
+    fmt = logging.Formatter("%(asctime)s %(levelname)s %(message)s")
+    fh.setFormatter(fmt)
+
+    if level == "0":
+        # Touch file but keep it effectively silent
+        try:
+            open(log_path, "a").close()
+        except OSError:
+            pass
+        fh.setLevel(logging.CRITICAL + 1)
+    elif level == "1":
+        fh.setLevel(logging.INFO)
+    else:
+        fh.setLevel(logging.DEBUG)
+
+    logger.addHandler(fh)
+    return logger
+
+
+def validate_env(logger: logging.Logger) -> None:
+    """
+    Check environment without breaking stdout NDJSON. Only logs/warns.
+    """
+    token = os.getenv("GITHUB_TOKEN") or os.getenv("GH_TOKEN")
+    if token and not (token.startswith("ghp_") or token.startswith("github_pat_")):
+        logger.error("Invalid GitHub token provided")
+
+
+def iter_urls_from_file(path: str) -> Iterator[str]:
+    """
+    Yield non-empty, stripped lines from the given file.
+    """
+    with open(path, "rt", encoding="utf-8") as f:
+        for line in f:
+            u = line.strip()
+            if u:
+                yield u
+
+
+def _process_urls(urls: Iterable[str], logger: logging.Logger) -> int:
+    """
+    Route each URL, write NDJSON to stdout, send all errors to stderr.
+    Returns the count of per-URL errors (does NOT fail the whole run).
+    """
+    router = UrlRouter()
+    writer = NdjsonWriter()
+    err_count = 0
+
+    for url in urls:
+        try:
+            # Router may yield 0..N records per URL
+            for item in router.route(iter([url])):
+                try:
+                    writer.write(item)  # pure NDJSON to stdout
+                except Exception as e:
+                    err_count += 1
+                    print(f"writer error for {url}: {e}", file=sys.stderr)
+        except Exception as e:
+            err_count += 1
+            print(f"route error for {url}: {e}", file=sys.stderr)
+
+    logger.info("Processed URLs with %d per-url errors", err_count)
+    return err_count
+
+
+def run_url_file(url_file: str) -> int:
+    """
+    Top-level command for URL-file mode.
+    Exit 0 if the file was read and processing completed (even with per-URL errors).
+    Exit 1 only for true fatals (e.g., file missing/unreadable).
+    """
+    logger = setup_logging()
+    validate_env(logger)
+    logger.info("Starting URL processing")
+
+    try:
+        urls = list(iter_urls_from_file(url_file))
+    except FileNotFoundError:
+        print(f"fatal: URL file not found: {url_file}", file=sys.stderr)
+        return 1
+    except OSError as e:
+        print(f"fatal: cannot read URL file '{url_file}': {e}", file=sys.stderr)
+        return 1
+
+    _ = _process_urls(urls, logger)
+    logger.info("Finished URL processing")
+    return 0
+
+
+if __name__ == "__main__":
+    if len(sys.argv) != 2:
+        print("usage: python -m src.url.url_main /abs/path/to/URL_FILE", file=sys.stderr)
         sys.exit(1)
     sys.exit(run_url_file(sys.argv[1]))
