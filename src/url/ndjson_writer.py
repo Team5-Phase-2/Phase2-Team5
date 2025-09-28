@@ -51,19 +51,20 @@ class NdjsonWriter:
 
         self.perf_metric = PerformanceClaimsMetric()
 
-    def write(self, item: ModelItem) -> None:
+    def write(self, item) -> None:
         # 1) compute metrics (parallel + timed inside)
        # metrics = score_model(item.model_url, cache_dir=".cache_hf", parallelism=8)
-
+        url = item if isinstance(item, str) else getattr(item, "model_url", "")
+        url = (url or "").strip()
         # 2) build required record
         rec = dict(REQUIRED_RECORD_TEMPLATE)
-        #rec["name"] = hf_model_repo_name(item.model_url)  # canonical org/name
-        rec["name"] = "bert-base-uncased"
+        rec["name"] = hf_model_repo_name(item.model_url)  # canonical org/name
+        #rec["name"] = "bert-base-uncased"
         rec["category"] = "MODEL"
         #rec.update(metrics)
        # ---- ramp_up_time: overwrite with our concrete metric ----
         try:
-            ru_res = self.calc.metrics["ramp_up_time"].calculate(item.model_url)
+            ru_res = self.calc.metrics["ramp_up_time"].calculate(url)
             if ru_res.score is not None:
                 rec["ramp_up_time"] = round(float(ru_res.score), 3)
             # always record latency we measured
@@ -74,7 +75,7 @@ class NdjsonWriter:
 
          # ---- bus_factor: overwrite with our concrete metric ----
         try:
-            bf_res = self.calc.metrics["bus_factor"].calculate(item.model_url)
+            bf_res = self.calc.metrics["bus_factor"].calculate(url)
             if bf_res.score is not None:
                 rec["bus_factor"] = round(float(bf_res.score), 3)
             rec["bus_factor_latency"] = int(bf_res.latency_ms)
@@ -84,11 +85,11 @@ class NdjsonWriter:
 
 
         # overwrite license with real metric (README -> license section)
-        lic_res = self.calc.metrics["license"].calculate(item.model_url)
+        lic_res = self.calc.metrics["license"].calculate(url)
         rec["license"] = round(float(lic_res.score), 3)
         rec["license_latency"] = int(lic_res.latency_ms)
 
-        sz_res = self.calc.metrics["size_score"].calculate(item.model_url)
+        sz_res = self.calc.metrics["size_score"].calculate(url)
         has_size = (sz_res.score is not None)
         if has_size:
             sz = float(sz_res.score)
@@ -103,7 +104,7 @@ class NdjsonWriter:
         # ---- performance_claims (standalone 0.0 or 1.0) ----
 
         try:
-            pc_res = self.perf_metric.calculate(item.model_url)
+            pc_res = self.perf_metric.calculate(url)
             score = float(pc_res.score) if (pc_res and pc_res.score is not None) else 0.0
             # keep metric’s own value; just clamp and round
             score = max(0.0, min(1.0, score))
@@ -116,7 +117,7 @@ class NdjsonWriter:
 
             # ---- code_quality metric ----
         try:
-            cq_res = self.calc.metrics["code_quality"].calculate(item.model_url)
+            cq_res = self.calc.metrics["code_quality"].calculate(url)
             if cq_res.score is not None:
                 rec["code_quality"] = round(float(cq_res.score), 3)
             rec["code_quality_latency"] = int(cq_res.latency_ms)
