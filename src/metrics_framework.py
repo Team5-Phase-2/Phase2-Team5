@@ -155,9 +155,10 @@ class LicenseMetric(BaseMetric):
         Map a license string to a normalized score (no Hugging Face API used).
           1.0 = permissive AND LGPL-2.1 compatible (e.g., MIT, Apache-2.0, BSD, MPL-2.0, LGPL-2.1)
           0.5 = unclear / custom / policy-dependent (e.g., OpenRAIL, LGPL-3.0, CC-BY-SA, model EULAs)
-          0.0 = restrictive or incompatible (e.g., GPL/AGPL, Non-Commercial, No-Derivatives, Proprietary)
+          0.0 = restrictive/incompatible/missing (e.g., GPL/AGPL, Non-Commercial, No-Derivatives, Proprietary, no license)
         """
-        # Hardcoded regexes for common licenses, grouped by permissiveness
+        import re
+
         licenses_restrictive = (
             r"\bagpl(?:-?3(?:\.0)?)?(?:-only|-or-later|\+)?\b",
             r"\bgpl(?:-?2(?:\.0)?|-?3(?:\.0)?)(?:-only|-or-later|\+)?\b",
@@ -185,8 +186,6 @@ class LicenseMetric(BaseMetric):
             r"\bcreative[-\s]?commons[-\s]?zero\b",
             r"\bunlicense\b",
         )
-
-        # Hardcoded regexes for known LGPL-2.1 compatible licenses
         licenses_compatible = (
             r"\bmit\b",
             r"\bapache(?:-|\s)?(?:license[-\s]?)?(?:version[-\s]?)?2(?:\.0)?\b", r"\bapache2\b",
@@ -198,37 +197,50 @@ class LicenseMetric(BaseMetric):
             r"\bmpl(?:-|\s)?2(?:\.0)?\b",
         )
         
-        license_score = 0.5 # default (unclear)
+        # Default for unknown/missing should be restrictive (0.0)
+        license_score = 0.0
         license_text = ""
-        # Extract "License" text from README
-        model_id = _hf_model_id_from_url(model_url)
-        if not model_id.startswith("http"):
-            readme_text = _fetch_hf_readme_text(model_url)
-            if readme_text:
-                match = re.search(
-                    r"(?im)^[ \t]*#{1,6}[ \t]*licens(?:e|ing)\b[^\n]*\n(.*?)(?=^[ \t]*#{1,6}[ \t]+\S|\Z)",
-                    readme_text,
-                    flags=re.DOTALL,
-                )
-                if match:
-                    license_text = match.group(1).strip().lower()
 
-            if license_text:
+        # 1) Normalize to an HF model id and fetch the README text
+        model_id = _hf_model_id_from_url(model_url)
+        if model_id and not model_id.startswith("http"):
+            readme_text = _fetch_hf_readme_text(model_id)  # <-- FIXED: use model_id
+            if readme_text:
+                text = readme_text.strip()
+                lower = text.lower()
+
+                # 2) Try YAML front-matter first: e.g., "license: apache-2.0" or "license: mit"
+                m = re.search(r'(?im)^\s*license\s*:\s*([^\r\n#]+)$', lower)
+                if m:
+                    license_text = m.group(1).strip()
+                else:
+                    # 3) Otherwise, try a "License" heading section
+                    sec = re.search(
+                        r"(?ims)^[ \t]*#{1,6}[ \t]*licens(?:e|ing)\b[^\n]*\n(.*?)(?=^[ \t]*#{1,6}[ \t]+\S|\Z)",
+                        text,
+                    )
+                    if sec:
+                        license_text = sec.group(1).strip().lower()
+                    else:
+                        # 4) Last resort: scan entire README for common license slugs/badges
+                        license_text = lower
+
+                # normalize separators so the regexes with hyphens work well
                 license_text = re.sub(r"[\s_]+", "-", license_text)
 
-                # Assigning score based on license type
-                if any(re.search(pattern, license_text) for pattern in licenses_restrictive):
-                    license_score = 0.0 # restrictive
-                elif any(re.search(pattern, license_text) for pattern in licenses_unclear):
-                    license_score = 0.5 # unclear
-                elif any(re.search(pattern, license_text) for pattern in licenses_permissive):
-                    license_score = 1.0 # permissive
+                # 5) Score mapping
+                if any(re.search(p, license_text) for p in licenses_restrictive):
+                    license_score = 0.0
+                elif any(re.search(p, license_text) for p in licenses_unclear):
+                    license_score = 0.5
+                elif any(re.search(p, license_text) for p in licenses_permissive):
+                    license_score = 1.0
+                    # ensure it’s in the compatible set
+                    if not any(re.search(p, license_text) for p in licenses_compatible):
+                        license_score = 0.0  # permissive but incompatible → treat as restrictive
 
-                # Double-check for LGPL-2.1 compatibility (only if score == 1.0)
-                if license_score == 1.0 and not any(re.search(p, license_text) for p in licenses_compatible):
-                    license_score = 0.0 # permissive but incompatible, downgrade to 0.0
+        return float(license_score)
 
-        return license_score
     
 class PerformanceClaimsMetric(BaseMetric):
     def __init__(self):
