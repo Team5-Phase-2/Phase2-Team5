@@ -6,7 +6,7 @@ from urllib.parse import urlparse
 import random
 import re
 
-'''
+
 def _hf_model_id_from_url(url: str) -> str:
     """
     Normalize a Hugging Face model reference to a model_id usable with the Hub API.
@@ -53,8 +53,8 @@ def _hf_model_id_from_url(url: str) -> str:
 
     # 1 segment => 'name', 2+ => 'owner/name'
     return cleaned[0] if len(cleaned) == 1 else f"{cleaned[0]}/{cleaned[1]}"
-'''
 
+'''
 # src/scoring.py
 from urllib.parse import urlparse, unquote
 import re
@@ -116,7 +116,7 @@ def _hf_model_id_from_url(u: str) -> str:
         owner, name = parts[0], parts[1]
         return unquote(f"{owner}/{name}")
     return unquote(parts[0])
-
+'''
     
 '''
 def score_model(model_url: str, *, cache_dir: str | None = None, parallelism: int = 8) -> Dict[str, Any]:
