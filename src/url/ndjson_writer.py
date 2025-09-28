@@ -30,6 +30,7 @@ from __future__ import annotations
 import json,os
 import sys
 from typing import TextIO
+from src.url.hf_name import hf_model_repo_name
 from src.url.router import ModelItem
 from src.scoring import _hf_model_id_from_url
 from src.metrics_framework import MetricsCalculator
@@ -82,7 +83,7 @@ class NdjsonWriter:
 
         # 2) build required record
         rec = dict(REQUIRED_RECORD_TEMPLATE)
-        rec["name"] = _hf_model_id_from_url(item.model_url)  # canonical org/name
+        rec["name"] = hf_model_repo_name(item.model_url)  # canonical org/name
         rec["category"] = "MODEL"
         #rec.update(metrics)
        # ---- ramp_up_time: overwrite with our concrete metric ----
