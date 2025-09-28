@@ -509,7 +509,7 @@ class CodeQualityMetric(BaseMetric):
         except subprocess.TimeoutExpired:
             return None
         except Exception as e:
-            print("ERROR running pylint:", e, flush=True)
+            print("ERROR running pylint:", e,file=sys.stderr, flush=True)
             return None
         finally:
             try:
