@@ -79,13 +79,16 @@ class NdjsonWriter:
 
     def write(self, item: ModelItem) -> None:
         # 1) compute metrics (parallel + timed inside)
-       # metrics = score_model(item.model_url, cache_dir=".cache_hf", parallelism=8)
+        # metrics = score_model(item.model_url, cache_dir=".cache_hf", parallelism=8)
 
         # 2) build required record
         rec = dict(REQUIRED_RECORD_TEMPLATE)
         rec["name"] = _hf_model_id_from_url(item.model_url)  # canonical org/name
         rec["category"] = "MODEL"
         #rec.update(metrics)
+
+        '''
+
        # ---- ramp_up_time: overwrite with our concrete metric ----
         try:
             ru_res = self.calc.metrics["ramp_up_time"].calculate(item.model_url)
@@ -173,7 +176,9 @@ class NdjsonWriter:
         except Exception:
             pass # keep existing net_score if something odd happens
         
-        # 4) print one NDJSON object
+        '''
+    
+     # 4) print one NDJSON object
         sys.stdout.write(json.dumps(rec) + "\n")
         sys.stdout.flush()
         
