@@ -90,15 +90,17 @@ class NdjsonWriter:
         rec["license_latency"] = int(lic_res.latency_ms)
 
         sz_res = self.calc.metrics["size_score"].calculate(url)
+        metric_obj = self.calc.metrics["size_score"]
+        if getattr(metric_obj, "device_scores", None):
+            rec["size_score"] = dict(metric_obj.device_scores)
+        else:
+            if sz_res.score is not None:
+                sz = float(sz_res.score)
+                rec["size_score"] = {
+                    "raspberry_pi": sz, "jetson_nano": sz,
+                    "desktop_pc": sz, "aws_server": sz,
+                }
         has_size = (sz_res.score is not None)
-        if has_size:
-            sz = float(sz_res.score)
-            rec["size_score"] = {
-                "raspberry_pi": sz,
-                "jetson_nano": sz,
-                "desktop_pc": sz,
-                "aws_server": sz,
-            }
         rec["size_score_latency"] = int(sz_res.latency_ms)
 
         # ---- performance_claims (standalone 0.0 or 1.0) ----
