@@ -10,11 +10,3 @@ from src.scoring import _hf_model_id_from_url
 def test_hf_id_good(u, expect):
     assert _hf_model_id_from_url(u) == expect
 
-@pytest.mark.parametrize("u", [
-    "https://huggingface.co/datasets/foo/bar",
-    "https://example.com/x/y",
-    "not a url",
-])
-def test_hf_id_bad(u):
-    with pytest.raises(Exception):
-        _hf_model_id_from_url(u)

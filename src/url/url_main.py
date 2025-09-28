@@ -74,7 +74,7 @@ if __name__ == "__main__":
     sys.exit(run_url_file(sys.argv[1]))
 """
 from __future__ import annotations
-import os
+import os, re
 import sys,json
 import logging
 from typing import Iterator, Iterable
@@ -142,16 +142,31 @@ def validate_env(logger: logging.Logger) -> None:
         logger.error(msg.strip())
 
 
+HF_MODEL_EXCLUDE = re.compile(r'huggingface\.co/(datasets|spaces)/', re.I)
+HF_HOST = "huggingface.co/"
 
-def iter_urls_from_file(path: str) -> Iterator[str]:
+def iter_urls_from_file(path: str):
     """
-    Yield non-empty, stripped lines from the given file.
+    Yield one model URL per input row. Accept both newline-delimited URLs
+    and CSV-ish rows of [code, dataset, model]. Prefer an HF *model* URL.
     """
-    with open(path, "rt", encoding="utf-8") as f:
-        for line in f:
-            u = line.strip()
-            if u:
-                yield u
+    with open(path, "r", encoding="utf-8", errors="ignore") as f:
+        for raw in f:
+            if not raw or not raw.strip():
+                continue
+            # split on commas but be resilient to spaces
+            parts = [p.strip() for p in raw.split(",") if p and p.strip()]
+            chosen = None
+            # Prefer the last HF URL that is *not* a dataset/spaces URL
+            for p in reversed(parts):
+                if HF_HOST in p and not HF_MODEL_EXCLUDE.search(p):
+                    chosen = p
+                    break
+            # Fall back to the last non-empty token
+            if chosen is None and parts:
+                chosen = parts[-1]
+            if chosen:
+                yield chosen
 
 
 
