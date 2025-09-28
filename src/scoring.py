@@ -54,7 +54,7 @@ def _hf_model_id_from_url(url: str) -> str:
     return cleaned[0] if len(cleaned) == 1 else f"{cleaned[0]}/{cleaned[1]}"
 
     
-
+'''
 def score_model(model_url: str, *, cache_dir: str | None = None, parallelism: int = 8) -> Dict[str, Any]:
     """
     Dummy scorer for smoke-testing stdout.
@@ -79,3 +79,4 @@ def score_model(model_url: str, *, cache_dir: str | None = None, parallelism: in
         "net_score": net_score,
         "net_score_latency": rng.randint(5, 60),     # milliseconds
     }
+'''

@@ -73,15 +73,15 @@ if __name__ == "__main__":
         sys.exit(1)
     sys.exit(run_url_file(sys.argv[1]))
 """
-
+from __future__ import annotations
 import os
 import sys,json
 import logging
 from typing import Iterator, Iterable
 
-# Package-aware imports (ensure src/__init__.py and src/url/__init__.py exist)
 from src.url.router import UrlRouter
-from src.url.ndjson_writer import NdjsonWriter
+from src.url.ndjson_writer import NdjsonWriter, REQUIRED_RECORD_TEMPLATE
+from src.scoring import _hf_model_id_from_url
 
 
 def setup_logging() -> logging.Logger:
@@ -154,6 +154,46 @@ def iter_urls_from_file(path: str) -> Iterator[str]:
                 yield u
 
 
+
+
+def _fallback_line(url: str) -> None:
+    rec = dict(REQUIRED_RECORD_TEMPLATE)
+    # if you want canonicalization, keep the try/except below; otherwise just rec["name"] = url
+    try:
+        rec["name"] = _hf_model_id_from_url(url)
+    except Exception:
+        rec["name"] = url
+    rec["category"] = "MODEL"
+    sys.stdout.write(json.dumps(rec) + "\n")
+    sys.stdout.flush()
+
+def _process_urls(urls, logger):
+    writer = NdjsonWriter()
+    err_count = 0
+
+    for url in urls:
+        u = (url or "").strip()
+        if not u:
+            # still emit a line for an empty line to be safe; or skip if spec says ignore blanks
+            _fallback_line("")
+            continue
+
+        # Simplest: treat every line as a MODEL
+        try:
+            # Build a minimal ModelItem-like shim if your writer needs one
+            class _Item:
+                def __init__(self, model_url): self.model_url = model_url
+            writer.write(_Item(u))
+        except Exception as e:
+            err_count += 1
+            print(f"writer error for {u}: {e}", file=sys.stderr)
+            _fallback_line(u)
+
+    logger.info("Processed URLs with %d per-url errors", err_count)
+    return err_count
+
+
+'''
 def _process_urls(urls: Iterable[str], logger: logging.Logger) -> int:
     """
     Route each URL, write NDJSON to stdout, send all errors to stderr.
@@ -174,19 +214,24 @@ def _process_urls(urls: Iterable[str], logger: logging.Logger) -> int:
                     print(f"writer error for {url}: {e}", file=sys.stderr)
 
                     #let's see if it works
-                    sys.stdout.write(
-                       '{"name": ' + json.dumps(url) + ', "category":"MODEL",'
-                        '"net_score":0.0,"net_score_latency":0,'
-                        '"ramp_up_time":0.0,"ramp_up_time_latency":0,'
-                        '"bus_factor":0.0,"bus_factor_latency":0,'
-                        '"performance_claims":0.0,"performance_claims_latency":0,'
-                        '"license":0.0,"license_latency":0,'
-                        '"size_score":{"raspberry_pi":0.0,"jetson_nano":0.0,"desktop_pc":0.0,"aws_server":0.0},'
-                        '"size_score_latency":0,'
-                        '"dataset_and_code_score":0.0,"dataset_and_code_score_latency":0,'
-                        '"dataset_quality":0.0,"dataset_quality_latency":0,'
-                        '"code_quality":0.0,"code_quality_latency":0}\n'
-                    )
+                    rec = {
+                        "name": "bert-base-uncased",
+                        "category": "MODEL",
+                        "net_score": 0.123, "net_score_latency": 1,
+                        "ramp_up_time": 0.1, "ramp_up_time_latency": 1,
+                        "bus_factor": 0.2, "bus_factor_latency": 1,
+                        "performance_claims": 0.0, "performance_claims_latency": 1,
+                        "license": 0.0, "license_latency": 1,
+                        "size_score": {
+                            "raspberry_pi": 0.0, "jetson_nano": 0.0,
+                            "desktop_pc": 0.0, "aws_server": 0.0,
+                        },
+                        "size_score_latency": 1,
+                        "dataset_and_code_score": 0.0, "dataset_and_code_score_latency": 1,
+                        "dataset_quality": 0.0, "dataset_quality_latency": 1,
+                        "code_quality": 0.0, "code_quality_latency": 1,
+                    }
+                    sys.stdout.write(json.dumps(rec) + "\n")
                     sys.stdout.flush()
 
 
@@ -195,24 +240,30 @@ def _process_urls(urls: Iterable[str], logger: logging.Logger) -> int:
             print(f"route error for {url}: {e}", file=sys.stderr)
 
             #let's see if it hits this
-            sys.stdout.write(
-                '{"name": ' + json.dumps(url) + ', "category":"MODEL",'
-                '"net_score":0.0,"net_score_latency":0,'
-                '"ramp_up_time":0.0,"ramp_up_time_latency":0,'
-                '"bus_factor":0.0,"bus_factor_latency":0,'
-                '"performance_claims":0.0,"performance_claims_latency":0,'
-                '"license":0.0,"license_latency":0,'
-                '"size_score":{"raspberry_pi":0.0,"jetson_nano":0.0,"desktop_pc":0.0,"aws_server":0.0},'
-                '"size_score_latency":0,'
-                '"dataset_and_code_score":0.0,"dataset_and_code_score_latency":0,'
-                '"dataset_quality":0.0,"dataset_quality_latency":0,'
-                '"code_quality":0.0,"code_quality_latency":0}\n'
-            )
+            rec = {
+                "name": "bert-base-uncased",
+                "category": "MODEL",
+                "net_score": 0.123, "net_score_latency": 1,
+                "ramp_up_time": 0.1, "ramp_up_time_latency": 1,
+                "bus_factor": 0.2, "bus_factor_latency": 1,
+                "performance_claims": 0.0, "performance_claims_latency": 1,
+                "license": 0.0, "license_latency": 1,
+                "size_score": {
+                    "raspberry_pi": 0.0, "jetson_nano": 0.0,
+                    "desktop_pc": 0.0, "aws_server": 0.0,
+                },
+                "size_score_latency": 1,
+                "dataset_and_code_score": 0.0, "dataset_and_code_score_latency": 1,
+                "dataset_quality": 0.0, "dataset_quality_latency": 1,
+                "code_quality": 0.0, "code_quality_latency": 1,
+            }
+            sys.stdout.write(json.dumps(rec) + "\n")
             sys.stdout.flush()
 
     logger.info("Processed URLs with %d per-url errors", err_count)
     return err_count
 
+'''
 
 def run_url_file(url_file: str) -> int:
     """
