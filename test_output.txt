@@ -5,23 +5,40 @@ plugins: cov-3.0.0, colcon-core-0.20.0
 collected 29 items
 
 tests/test_classify.py ........                                          [ 27%]
-tests/test_hf_id.py .......                                              [ 51%]
-tests/test_metrics_framework.py ..............                           [100%]
+tests/test_hf_id.py ....F
+
+=================================== FAILURES ===================================
+___________ test_hf_id_bad[https://huggingface.co/datasets/foo/bar] ____________
+
+u = 'https://huggingface.co/datasets/foo/bar'
+
+    @pytest.mark.parametrize("u", [
+        "https://huggingface.co/datasets/foo/bar",
+        "https://example.com/x/y",
+        "not a url",
+    ])
+    def test_hf_id_bad(u):
+>       with pytest.raises(Exception):
+E       Failed: DID NOT RAISE <class 'Exception'>
+
+tests/test_hf_id.py:19: Failed
 
 ---------- coverage: platform linux, python 3.10.12-final-0 ----------
 Name                       Stmts   Miss  Cover   Missing
 --------------------------------------------------------
 src/__init__.py                0      0   100%
-src/metrics_framework.py     314    123    61%   33-34, 58-59, 64, 74, 81-82, 114, 126-127, 139-140, 144-145, 212, 215-227, 242, 251, 271-272, 277-285, 292-350, 357-407, 445-451, 462, 488-489, 509-513, 517-518, 529-531, 552-557, 561-580
-src/scoring.py                39      3    92%   20, 26, 43
+src/metrics_framework.py     322    267    17%   27-36, 50, 54-61, 66, 70, 74-106, 110, 114-147, 151, 161-231, 235, 238-244, 248, 251-287, 291, 294-352, 356, 359-409, 416, 419-491, 496-520, 524-541, 549, 562-567, 571-590
+src/scoring.py                27      2    93%   33, 37
 src/url/__init__.py            0      0   100%
 src/url/classify.py           14      0   100%
 src/url/hf_name.py            16     16     0%   2-32
-src/url/ndjson_writer.py      85     85     0%   2-201
-src/url/router.py             37     37     0%   5-81
+src/url/ndjson_writer.py      85     85     0%   3-177
+src/url/router.py             37     22    41%   50-51, 55-73, 76-81
 src/url/url_main.py           95     95     0%   76-296
 --------------------------------------------------------
-TOTAL                        600    359    40%
+TOTAL                        596    487    18%
 
-
-============================== 29 passed in 5.23s ==============================
+=========================== short test summary info ============================
+FAILED tests/test_hf_id.py::test_hf_id_bad[https://huggingface.co/datasets/foo/bar]
+!!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!!
+========================= 1 failed, 12 passed in 0.34s =========================

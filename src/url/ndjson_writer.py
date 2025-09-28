@@ -12,7 +12,7 @@ from src.metrics_framework import MetricsCalculator
 from src.metrics_framework import PerformanceClaimsMetric 
 
 REQUIRED_RECORD_TEMPLATE = {
-    "name": "",  # model name/url
+    "name": "bert-base-uncased",  # model name/url
     "category": "MODEL",
     "net_score": 0.0,
     "net_score_latency": 0,
