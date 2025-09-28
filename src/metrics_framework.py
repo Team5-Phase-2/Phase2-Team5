@@ -483,7 +483,7 @@ class CodeQualityMetric(BaseMetric):
                         if score is not None:
                             scores.append(score)
             
-            return sum(scores) / len(scores) if scores else 0.5
+            return sum(scores) / len(scores) if scores else 0
         
         except Exception:
             return None
@@ -525,7 +525,15 @@ class CodeQualityMetric(BaseMetric):
                     # Extract the numeric score (e.g., "8.50/10")
                     parts = line.split('rated at')[-1].strip().split('/')
                     raw_score = float(parts[0])
-                    return max(0.0, min(1.0, raw_score / 10.0))
+                    if raw_score >=7 :
+                        return 1
+                    elif raw_score >= 4 :
+                        return 0.75
+                    elif raw_score >= 2 :
+                        return 0.5
+                    elif raw_score >=0.1 :
+                        return 0.25
+
                 except (ValueError, IndexError):
                     continue
         return None
