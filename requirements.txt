@@ -11,5 +11,5 @@ mypy
 transformers
 huggingface_hub
 
-
+pylint
 requests

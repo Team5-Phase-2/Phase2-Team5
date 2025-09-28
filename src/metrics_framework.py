@@ -2,7 +2,7 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import Dict, Optional
-from .scoring import _hf_model_id_from_url
+from src.scoring import _hf_model_id_from_url
 from datetime import datetime
 import time
 import re
@@ -11,6 +11,7 @@ import math
 import tempfile
 import subprocess
 import os
+import sys
 
 #==========HELPER for Performance Metric=============================
 PERF_KEYWORDS = [
@@ -69,7 +70,7 @@ class RampUpTimeMetric(BaseMetric):
     def _calculate_score(self, model_url: str) -> Optional[float]:
         # Normalize to org/name like your other metrics do
         model_id = _hf_model_id_from_url(model_url)
-        if "/" not in model_id or model_id.startswith("http"):
+        if model_id.startswith("http"):
             return None  # no signal for non-HF model refs
 
         try:
@@ -109,7 +110,7 @@ class BusFactorMetric(BaseMetric):
     def _calculate_score(self, model_url: str) -> Optional[float]:
 
         model_id = _hf_model_id_from_url(model_url)
-        if "/" not in model_id or model_id.startswith("http"):
+        if model_id.startswith("http"):
             return 0.0  # unknown ⇒ conservative
 
         try:
@@ -199,7 +200,7 @@ class LicenseMetric(BaseMetric):
         license_text = ""
         # Extract "License" text from README
         model_id = _hf_model_id_from_url(model_url)
-        if "/" in model_id and not model_id.startswith("http"):
+        if not model_id.startswith("http"):
             readme_text = _fetch_hf_readme_text(model_url)
             if readme_text:
                 match = re.search(
@@ -246,7 +247,7 @@ class SizeMetric(BaseMetric):
     
     def _calculate_score(self, model_url: str) -> Optional[float]:
         model_id = _hf_model_id_from_url(model_url)
-        if "/" not in model_id or model_id.startswith("http"):
+        if model_id.startswith("http"):
             return None  # unknown size
         
         try:
@@ -290,7 +291,7 @@ class DatasetCodeMetric(BaseMetric):
     def _calculate_score(self, model_url: str) -> Optional[float]:
         model_id = _hf_model_id_from_url(model_url)
         # Only apply to valid Hugging Face model identifiers.
-        if "/" not in model_id or model_id.startswith("http"):
+        if model_id.startswith("http"):
             return 0.0
 
         dataset_available = False
@@ -414,75 +415,108 @@ class CodeQualityMetric(BaseMetric):
     
     def _calculate_score(self, model_url: str) -> Optional[float]:
         model_id = _hf_model_id_from_url(model_url)
-     
+        
         try:
-            # Get list of files from Hugging Face API
+            # 1. Get metadata from Hugging Face API
             api_url = f"https://huggingface.co/api/models/{model_id}"
+           
             response = requests.get(api_url, timeout=10)
             if response.status_code != 200:
                 return None
             
-            files_data = response.json().get('siblings', [])
+            metadata = response.json()
+            files_data = metadata.get("siblings", [])
+            config = metadata.get("config", {})
+            
+            
+            # 2. Look for Python files in repo
+            python_files = [
+                f["rfilename"] for f in files_data
+                if f.get("rfilename", "").endswith(".py")
+            ]
+            
            
             
-            # Filter for Python files
-            python_files = []
-            for file_info in files_data:
-                filename = file_info.get('rfilename', '')
-                if filename and filename.endswith('.py'):
-                    python_files.append(filename)
-            
-            if not python_files:
-                return 0.5  # No Python files found
-            
-            # Analyze each Python file
             scores = []
-            for python_file in python_files:
-                file_url = f"https://huggingface.co/{model_id}/raw/main/{python_file}"
-                file_response = requests.get(file_url, timeout=10)
-                if file_response.status_code == 200:
-                    score = self._analyze_with_pylint(file_response.text, python_file)
-                    if score is not None:
-                        scores.append(score)
+
+            if python_files:
+                
+                # Case A: Python files exist in the repo
+                for python_file in python_files:
+                    file_url = f"https://huggingface.co/{model_id}/raw/main/{python_file}"
+                    file_response = requests.get(file_url, timeout=10)
+                    if file_response.status_code == 200:
+                        score = self._analyze_with_pylint(file_response.text, python_file)
+                        if score is not None:
+                            scores.append(score)
+            
+            else:
+                
+                # Case B: No code in repo → fall back to transformers implementation
+                model_type = config.get("model_type")
+               
+                if model_type:
+                    # Map HF model_type → transformers folder name
+                    # (gemma3_text → gemma3, llama → llama, etc.)
+                    if model_type.endswith("_text"):
+                        model_type = model_type.replace("_text", "")
+                        
+                    
+                    # URL to raw file in transformers GitHub
+                    base_url = (
+                        "https://raw.githubusercontent.com/huggingface/"
+                        "transformers/main/src/transformers/models"
+                    )
+                    model_file = f"{base_url}/{model_type}/modeling_{model_type}.py"
+                    
+                    
+                    file_response = requests.get(model_file, timeout=10)
+                   
+                    if file_response.status_code == 200:
+                        
+                        score = self._analyze_with_pylint(
+                            file_response.text,
+                            f"modeling_{model_type}.py"
+                        )
+                        
+                        
+                        if score is not None:
+                            scores.append(score)
             
             return sum(scores) / len(scores) if scores else 0.5
-            
+        
         except Exception:
             return None
     
+    
+
     def _analyze_with_pylint(self, code_content: str, filename: str) -> Optional[float]:
-        """
-        Analyze a single Python file's content using pylint
-        Returns normalized score (0.0 to 1.0) or None if analysis fails
-        """
-        # Create a temporary file with the code content
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False) as temp_file:
-            temp_file.write(code_content)
-            temp_file_path = temp_file.name
-        
         try:
-            # Run pylint on the temporary file
+            with tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False, encoding="utf-8") as temp_file:
+               temp_file.write(code_content)
+               temp_file_path = temp_file.name
+              
+
             result = subprocess.run(
-                ['pylint', '--output-format=text', '--score=yes', temp_file_path],
-                capture_output=True,
-                text=True,
-                timeout=30  # shorter timeout for single files
+               [sys.executable, "-m", "pylint", "--output-format=text", "--score=yes", temp_file_path],
+               capture_output=True,
+               text=True,
+               timeout=30,
             )
             
-            # Parse the pylint score from output
             return self._parse_pylint_score(result.stdout)
-            
+
         except subprocess.TimeoutExpired:
             return None
-        except Exception:
+        except Exception as e:
+            print("ERROR running pylint:", e, flush=True)
             return None
         finally:
-            # Clean up temporary file
             try:
-                os.unlink(temp_file_path)
+               os.unlink(temp_file_path)
             except:
-                pass
-    
+               pass
+
     def _parse_pylint_score(self, output: str) -> Optional[float]:
         """Parse pylint score from output and normalize to 0.0-1.0 range"""
         for line in output.split('\n'):
@@ -495,6 +529,9 @@ class CodeQualityMetric(BaseMetric):
                 except (ValueError, IndexError):
                     continue
         return None
+
+
+
 
 class MetricsCalculator:
     
@@ -541,3 +578,6 @@ class MetricsCalculator:
                 total_weight += weight
         
         return round(net_score / total_weight, 3) if total_weight > 0 else 0.0
+    
+
+   
