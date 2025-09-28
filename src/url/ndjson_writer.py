@@ -13,6 +13,7 @@ def hf_model_repo_name(url: str) -> str:
 
 class NdjsonWriter:
     def __init__(self, out: TextIO | None = None) -> None:
+
         self.out = out or sys.stdout
         self.calc = MetricsCalculator()
         self.perf_metric = PerformanceClaimsMetric()

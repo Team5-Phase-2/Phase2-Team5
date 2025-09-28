@@ -75,7 +75,7 @@ if __name__ == "__main__":
 """
 
 import os
-import sys
+import sys,json
 import logging
 from typing import Iterator, Iterable
 
@@ -172,9 +172,43 @@ def _process_urls(urls: Iterable[str], logger: logging.Logger) -> int:
                 except Exception as e:
                     err_count += 1
                     print(f"writer error for {url}: {e}", file=sys.stderr)
+
+                    #let's see if it works
+                    sys.stdout.write(
+                       '{"name": ' + json.dumps(url) + ', "category":"MODEL",'
+                        '"net_score":0.0,"net_score_latency":0,'
+                        '"ramp_up_time":0.0,"ramp_up_time_latency":0,'
+                        '"bus_factor":0.0,"bus_factor_latency":0,'
+                        '"performance_claims":0.0,"performance_claims_latency":0,'
+                        '"license":0.0,"license_latency":0,'
+                        '"size_score":{"raspberry_pi":0.0,"jetson_nano":0.0,"desktop_pc":0.0,"aws_server":0.0},'
+                        '"size_score_latency":0,'
+                        '"dataset_and_code_score":0.0,"dataset_and_code_score_latency":0,'
+                        '"dataset_quality":0.0,"dataset_quality_latency":0,'
+                        '"code_quality":0.0,"code_quality_latency":0}\n'
+                    )
+                    sys.stdout.flush()
+
+
         except Exception as e:
             err_count += 1
             print(f"route error for {url}: {e}", file=sys.stderr)
+
+            #let's see if it hits this
+            sys.stdout.write(
+                '{"name": ' + json.dumps(url) + ', "category":"MODEL",'
+                '"net_score":0.0,"net_score_latency":0,'
+                '"ramp_up_time":0.0,"ramp_up_time_latency":0,'
+                '"bus_factor":0.0,"bus_factor_latency":0,'
+                '"performance_claims":0.0,"performance_claims_latency":0,'
+                '"license":0.0,"license_latency":0,'
+                '"size_score":{"raspberry_pi":0.0,"jetson_nano":0.0,"desktop_pc":0.0,"aws_server":0.0},'
+                '"size_score_latency":0,'
+                '"dataset_and_code_score":0.0,"dataset_and_code_score_latency":0,'
+                '"dataset_quality":0.0,"dataset_quality_latency":0,'
+                '"code_quality":0.0,"code_quality_latency":0}\n'
+            )
+            sys.stdout.flush()
 
     logger.info("Processed URLs with %d per-url errors", err_count)
     return err_count
