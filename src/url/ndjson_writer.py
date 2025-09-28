@@ -27,11 +27,11 @@ Example output:
 """
 
 from __future__ import annotations
-import json
+import json,os
 import sys
 from typing import TextIO
 from src.url.router import ModelItem
-from src.scoring import score_model, _hf_model_id_from_url
+from src.scoring import _hf_model_id_from_url
 from src.metrics_framework import MetricsCalculator
 
 from src.metrics_framework import PerformanceClaimsMetric 
@@ -78,13 +78,13 @@ class NdjsonWriter:
 
     def write(self, item: ModelItem) -> None:
         # 1) compute metrics (parallel + timed inside)
-        metrics = score_model(item.model_url, cache_dir=".cache_hf", parallelism=8)
+       # metrics = score_model(item.model_url, cache_dir=".cache_hf", parallelism=8)
 
         # 2) build required record
         rec = dict(REQUIRED_RECORD_TEMPLATE)
         rec["name"] = _hf_model_id_from_url(item.model_url)  # canonical org/name
         rec["category"] = "MODEL"
-        rec.update(metrics)
+        #rec.update(metrics)
        # ---- ramp_up_time: overwrite with our concrete metric ----
         try:
             ru_res = self.calc.metrics["ramp_up_time"].calculate(item.model_url)
