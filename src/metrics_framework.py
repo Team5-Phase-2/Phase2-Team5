@@ -246,46 +246,126 @@ class PerformanceClaimsMetric(BaseMetric):
 class SizeMetric(BaseMetric):
     def __init__(self):
         super().__init__("size_score")
-    
+
     def _calculate_score(self, model_url: str) -> Optional[float]:
+        self.device_scores = {}
+
         model_id = _hf_model_id_from_url(model_url)
         if model_id.startswith("http"):
-            return None  # unknown size
-        
+            return None  # non-HF / unknown
+
         try:
-            r = requests.get(f"https://huggingface.co/api/models/{model_id}", timeout=10)
-            if r.status_code != 200:
-                return None  # unknown size
-            data = r.json()
-            siblings = data.get("siblings") or []
+            # Get head (sha) + file listing ("siblings")
+            info_resp = requests.get(
+                f"https://huggingface.co/api/models/{model_id}",
+                timeout=(2.0, 6.0),
+            )
+            if info_resp.status_code != 200:
+                return None
+            info = info_resp.json() or {}
+            head = info.get("sha")
+            siblings = info.get("siblings") or []
+            if not head or not isinstance(siblings, list):
+                return None
 
-            #match pytorch weight names
-            pat_bin  = re.compile(r"^pytorch_model(?:-\d{5}-of-\d{5})?\.bin$", re.IGNORECASE)
-            pat_st   = re.compile(r"^model(?:-\d{5}-of-\d{5})?\.safetensors$", re.IGNORECASE)
-            pat_st2  = re.compile(r"^pytorch_model(?:-\d{5}-of-\d{5})?\.safetensors$", re.IGNORECASE)  # rare but seen
-
+            # Parse files starting from head, classify by extensions and basenames
             total_bytes = 0
+            weight_extensions = (
+                ".safetensors", ".bin", ".h5", ".hdf5", ".ckpt",
+                ".pt", ".pth", ".onnx", ".gguf", ".msgpack"
+            )
+            weight_basenames = (
+                "pytorch_model", "model", "tf_model", "flax_model",
+                "diffusion_pytorch_model", "adapter_model"
+            )
+
             for s in siblings:
                 name = (s.get("rfilename") or "").strip()
-                sz = s.get("size")
-                if not isinstance(sz, int):
+                if not name:
                     continue
-                if pat_bin.match(name) or pat_st.match(name) or pat_st2.match(name):
-                    total_bytes += sz
-            
-            if total_bytes <= 0:
-                return None  # unknown size
-            
-            gb = total_bytes / (1024**3)  # bytes to GB
+                lower = name.lower()
+                if not (lower.endswith(weight_extensions) or os.path.basename(lower).startswith(weight_basenames)):
+                    continue
 
-            if gb < 1: return 1.0
-            if gb < 10: return 0.75
-            if gb < 20: return 0.5
-            if gb < 40: return 0.25
-            return 0.0
+                # Query exact file size
+                size_bytes = None
+                url = f"https://huggingface.co/{model_id}/resolve/{head}/{name}"
+                try:
+                    # Primary head
+                    h = requests.head(url, allow_redirects=True, timeout=(2.0, 5.0))
+                    cl = h.headers.get("Content-Length")
+                    if cl and cl.isdigit():
+                        size_bytes = int(cl)
+                except Exception:
+                    size_bytes = None
+
+                # Get 1 byte with Range to read Content-Range total
+                if size_bytes is None:
+                    try:
+                        g = requests.get(url, headers={"Range": "bytes=0-0"}, stream=True, timeout=(2.0, 6.0))
+                        cr = g.headers.get("Content-Range")
+                        if cr and "/" in cr:
+                            after_slash = cr.split("/", 1)[1].strip()
+                            if after_slash.isdigit():
+                                size_bytes = int(after_slash)
+                    except Exception:
+                        size_bytes = None
+
+                if not isinstance(size_bytes, int) or size_bytes <= 0:
+                    continue
+                if size_bytes < 5 * 1024 * 1024:  # ignore tiny files (<5MB)
+                    continue
+
+                total_bytes += size_bytes
+
+                # Early exit, all device scores == 0.0 at >=120GB
+                if total_bytes >= 120 * (1024 ** 3):
+                    break
+
+            if total_bytes <= 0:
+                return None
+
+            gb = total_bytes / (1024 ** 3)
+
+            # Raspberry Pi
+            if   gb < 0.2: self.device_scores["raspberry_pi"] = 1.0
+            elif gb < 0.5: self.device_scores["raspberry_pi"] = 0.8
+            elif gb < 1.0: self.device_scores["raspberry_pi"] = 0.6
+            elif gb < 2.0: self.device_scores["raspberry_pi"] = 0.4
+            elif gb < 4.0: self.device_scores["raspberry_pi"] = 0.2
+            else:          self.device_scores["raspberry_pi"] = 0.0
+
+            # Jetson Nano
+            if   gb < 0.5: self.device_scores["jetson_nano"] = 1.0
+            elif gb < 1.0: self.device_scores["jetson_nano"] = 0.75
+            elif gb < 2.0: self.device_scores["jetson_nano"] = 0.5
+            elif gb < 4.0: self.device_scores["jetson_nano"] = 0.25
+            else:          self.device_scores["jetson_nano"] = 0.0
+
+            # Desktop PC
+            if   gb < 4.0:  self.device_scores["desktop_pc"] = 1.0
+            elif gb < 8.0:  self.device_scores["desktop_pc"] = 0.8
+            elif gb < 16.0: self.device_scores["desktop_pc"] = 0.6
+            elif gb < 32.0: self.device_scores["desktop_pc"] = 0.4
+            elif gb < 64.0: self.device_scores["desktop_pc"] = 0.2
+            else:           self.device_scores["desktop_pc"] = 0.0
+
+            # AWS Server
+            if   gb < 40.0:  self.device_scores["aws_server"] = 1.0
+            elif gb < 60.0:  self.device_scores["aws_server"] = 0.8
+            elif gb < 80.0:  self.device_scores["aws_server"] = 0.6
+            elif gb < 100.0: self.device_scores["aws_server"] = 0.4
+            elif gb < 120.0: self.device_scores["aws_server"] = 0.2
+            else:            self.device_scores["aws_server"] = 0.0
+
+            # Round per-device and return average
+            self.device_scores = {k: round(float(v), 3) for k, v in self.device_scores.items()}
+            return round(sum(self.device_scores.values()) / 4.0, 3)
+
         except Exception:
-            return None  # unknown size
-        
+            self.device_scores = {}
+            return None
+
 class DatasetCodeMetric(BaseMetric):
     def __init__(self):
         super().__init__("dataset_and_code_score")
