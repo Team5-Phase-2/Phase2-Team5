@@ -4,6 +4,8 @@ from dataclasses import dataclass
 from typing import Dict, Optional
 from src.scoring import _hf_model_id_from_url
 from datetime import datetime
+from src.url.router import ModelItem
+
 import time
 import re
 import requests
@@ -238,7 +240,7 @@ class PerformanceClaimsMetric(BaseMetric):
             return 0.0  # no README → no claims
         for kw in PERF_KEYWORDS:
             if re.search(rf"\b{re.escape(kw)}\b", text, flags=re.IGNORECASE):
-                return 1.0
+                return 0.75
         return 0.0
 
 class SizeMetric(BaseMetric):
