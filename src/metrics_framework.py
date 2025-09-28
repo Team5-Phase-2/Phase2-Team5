@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from typing import Dict, Optional
 from src.scoring import _hf_model_id_from_url
 from datetime import datetime
+from concurrent.futures import ThreadPoolExecutor
 import time
 import re
 import requests
@@ -53,7 +54,7 @@ class BaseMetric(ABC):
         
         try:
             score = self._calculate_score(model_url)
-            latency_ms = (time.time_ns() - start_time) // 1_000_000
+            latency_ms = int(round((time.time_ns() - start_time) / 1_000_000.0))
             return MetricResult(score, latency_ms)
         except Exception as e:
             return MetricResult(None, (time.time_ns() - start_time) // 1_000_000)
@@ -244,46 +245,111 @@ class PerformanceClaimsMetric(BaseMetric):
 class SizeMetric(BaseMetric):
     def __init__(self):
         super().__init__("size_score")
-    
+
     def _calculate_score(self, model_url: str) -> Optional[float]:
-        model_id = _hf_model_id_from_url(model_url)
-        if model_id.startswith("http"):
-            return None  # unknown size
-        
+        from concurrent.futures import ThreadPoolExecutor
+        result: Optional[float] = None
         try:
-            r = requests.get(f"https://huggingface.co/api/models/{model_id}", timeout=10)
-            if r.status_code != 200:
-                return None  # unknown size
-            data = r.json()
-            siblings = data.get("siblings") or []
+            # reset scores each call
+            self.device_scores = {}
 
-            #match pytorch weight names
-            pat_bin  = re.compile(r"^pytorch_model(?:-\d{5}-of-\d{5})?\.bin$", re.IGNORECASE)
-            pat_st   = re.compile(r"^model(?:-\d{5}-of-\d{5})?\.safetensors$", re.IGNORECASE)
-            pat_st2  = re.compile(r"^pytorch_model(?:-\d{5}-of-\d{5})?\.safetensors$", re.IGNORECASE)  # rare but seen
+            model_id = _hf_model_id_from_url(model_url)
+            if model_id.startswith("http"):
+                return result  # unknown / non-HF model
 
-            total_bytes = 0
+            # 1) Retrieve model info once (HEAD sha + siblings)
+            sess = requests.Session()
+            info_resp = sess.get(f"https://huggingface.co/api/models/{model_id}", timeout=(2.0, 4.0))
+            if info_resp.status_code != 200:
+                return result
+            info = info_resp.json() or {}
+            head = info.get("sha")
+            if not head:
+                return result
+            siblings = info.get("siblings") or []
+
+            # 2) From siblings, pick likely weight files (names only → cheap)
+            weight_extensions = (".safetensors", ".bin", ".h5", ".msgpack", ".gguf", ".onnx", ".pt", ".pth")
+            weight_basenames = (
+                "pytorch_model", "model", "tf_model", "flax_model",
+                "diffusion_pytorch_model", "adapter_model"
+            )
+            candidates: list[str] = []
             for s in siblings:
                 name = (s.get("rfilename") or "").strip()
-                sz = s.get("size")
-                if not isinstance(sz, int):
+                if not name:
                     continue
-                if pat_bin.match(name) or pat_st.match(name) or pat_st2.match(name):
-                    total_bytes += sz
-            
-            if total_bytes <= 0:
-                return None  # unknown size
-            
-            gb = total_bytes / (1024**3)  # bytes to GB
+                lower = name.lower()
+                if lower.endswith(weight_extensions) or os.path.basename(lower).startswith(weight_basenames):
+                    candidates.append(name)
 
-            if gb < 1: return 1.0
-            if gb < 10: return 0.75
-            if gb < 20: return 0.5
-            if gb < 40: return 0.25
-            return 0.0
+            if not candidates:
+                return result  # no obvious weights
+
+            # 3) HEAD each candidate concurrently to get Content-Length
+            def head_size(fname: str) -> int:
+                try:
+                    url = f"https://huggingface.co/{model_id}/resolve/{head}/{fname}"
+                    r = sess.head(url, timeout=(2.0, 3.0), allow_redirects=True)
+                    cl = r.headers.get("Content-Length")
+                    return int(cl) if cl and cl.isdigit() else 0
+                except Exception:
+                    return 0
+
+            total_bytes = 0
+            with ThreadPoolExecutor(max_workers=min(6, len(candidates))) as ex:
+                for sz in ex.map(head_size, candidates):
+                    total_bytes += sz
+
+            if total_bytes <= 0:
+                return result
+
+            # 4) Map total size (GB) to per-device compatibility (your thresholds)
+            gb = total_bytes / (1024 ** 3)
+
+            # Raspberry Pi
+            if   gb < 0.2: self.device_scores["raspberry_pi"] = 1.0
+            elif gb < 0.5: self.device_scores["raspberry_pi"] = 0.8
+            elif gb < 1.0: self.device_scores["raspberry_pi"] = 0.6
+            elif gb < 2.0: self.device_scores["raspberry_pi"] = 0.4
+            elif gb < 4.0: self.device_scores["raspberry_pi"] = 0.2
+            else:          self.device_scores["raspberry_pi"] = 0.0
+
+            # Jetson Nano
+            if   gb < 0.5: self.device_scores["jetson_nano"] = 1.0
+            elif gb < 1.0: self.device_scores["jetson_nano"] = 0.75
+            elif gb < 2.0: self.device_scores["jetson_nano"] = 0.5
+            elif gb < 4.0: self.device_scores["jetson_nano"] = 0.25
+            else:          self.device_scores["jetson_nano"] = 0.0
+
+            # Desktop PC
+            if   gb < 4.0:  self.device_scores["desktop_pc"] = 1.0
+            elif gb < 8.0:  self.device_scores["desktop_pc"] = 0.8
+            elif gb < 16.0: self.device_scores["desktop_pc"] = 0.6
+            elif gb < 32.0: self.device_scores["desktop_pc"] = 0.4
+            elif gb < 64.0: self.device_scores["desktop_pc"] = 0.2
+            else:           self.device_scores["desktop_pc"] = 0.0
+
+            # AWS Server
+            if   gb < 40.0:  self.device_scores["aws_server"] = 1.0
+            elif gb < 60.0:  self.device_scores["aws_server"] = 0.8
+            elif gb < 80.0:  self.device_scores["aws_server"] = 0.6
+            elif gb < 100.0: self.device_scores["aws_server"] = 0.4
+            elif gb < 120.0: self.device_scores["aws_server"] = 0.2
+            else:            self.device_scores["aws_server"] = 0.0
+
+            # Round per-device scores
+            self.device_scores = {k: round(v, 3) for k, v in self.device_scores.items()}
+
+            # 5) Return average score across all devices
+            result = round(sum(self.device_scores.values()) / 4.0, 3)
+
         except Exception:
-            return None  # unknown size
-        
+            # Clear scores on error
+            self.device_scores = {}
+
+        return result
+    
 class DatasetCodeMetric(BaseMetric):
     def __init__(self):
         super().__init__("dataset_and_code_score")

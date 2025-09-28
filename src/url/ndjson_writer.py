@@ -10,52 +10,52 @@ Classes:
 
 Behavior:
 - Uses REQUIRED_RECORD_TEMPLATE to guarantee all fields exist
-  (name, category, net_score, latencies, etc.)
+(name, category, net_score, latencies, etc.)
 - Currently fills everything with default values (0.0 or 0).
 - Adds _linked_datasets and _linked_code to help teammates later,
-  though these fields are not required by the spec.
+though these fields are not required by the spec.
 
 
 Example output:
-    {"name": "https://huggingface.co/google/gemma-3-270m",
-     "category": "MODEL",
-     "net_score": 0.0,
-     "license": 0.0,
-     ...,
-     "_linked_datasets": ["https://huggingface.co/datasets/xlangai/AgentNet"],
-     "_linked_code": ["https://github.com/SkyworkAI/Matrix-Game"]}
+{"name": "https://huggingface.co/google/gemma-3-270m",
+"category": "MODEL",
+"net_score": 0.0,
+"license": 0.0,
+...,
+"_linked_datasets": ["https://huggingface.co/datasets/xlangai/AgentNet"],
+"_linked_code": ["https://github.com/SkyworkAI/Matrix-Game"]}
 """
 
 from __future__ import annotations
 import json
 import sys
-from typing import TextIO
+import time
+from typing import TextIO, Dict, Any
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from src.url.router import ModelItem
-from src.scoring import score_model, _hf_model_id_from_url
-from src.metrics_framework import MetricsCalculator
-
-from src.metrics_framework import PerformanceClaimsMetric 
+from src.scoring import _hf_model_id_from_url
+from src.metrics_framework import MetricsCalculator, PerformanceClaimsMetric, MetricResult
 
 
 REQUIRED_RECORD_TEMPLATE = {
-    "name": "",  # model name/url
-    "category": "MODEL",
-    "net_score": 0.0,
-    "net_score_latency": 0,
-    "ramp_up_time": 0.0, "ramp_up_time_latency": 0,
-    "bus_factor": 0.0, "bus_factor_latency": 0,
-    "performance_claims": 0.0, "performance_claims_latency": 0,
-    "license": 0.0, "license_latency": 0,
-    "size_score": {
-        "raspberry_pi": 0.0,
-        "jetson_nano": 0.0,
-        "desktop_pc": 0.0,
-        "aws_server": 0.0,
-    },
-    "size_score_latency": 0,
-    "dataset_and_code_score": 0.0, "dataset_and_code_score_latency": 0,
-    "dataset_quality": 0.0, "dataset_quality_latency": 0,
-    "code_quality": 0.0, "code_quality_latency": 0,
+"name": "",  # model name/url
+"category": "MODEL",
+"net_score": 0.0,
+"net_score_latency": 0,
+"ramp_up_time": 0.0, "ramp_up_time_latency": 0,
+"bus_factor": 0.0, "bus_factor_latency": 0,
+"performance_claims": 0.0, "performance_claims_latency": 0,
+"license": 0.0, "license_latency": 0,
+"size_score": {
+"raspberry_pi": 0.0,
+"jetson_nano": 0.0,
+"desktop_pc": 0.0,
+"aws_server": 0.0,
+},
+"size_score_latency": 0,
+"dataset_and_code_score": 0.0, "dataset_and_code_score_latency": 0,
+"dataset_quality": 0.0, "dataset_quality_latency": 0,
+"code_quality": 0.0, "code_quality_latency": 0,
 }
 
 #class NdjsonWriter:
@@ -69,110 +69,195 @@ REQUIRED_RECORD_TEMPLATE = {
 #        rec["_linked_datasets"] = item.datasets
 #        rec["_linked_code"] = item.code
 #        self.out.write(json.dumps(rec) + "\n")
+
+#class NdjsonWriter:
+# def write(self, item: ModelItem) -> None:
+#     # 1) compute metrics (parallel + timed inside)
+#     metrics = score_model(item.model_url, cache_dir=".cache_hf", parallelism=8)
+
+#     # 2) build required record
+#     rec = dict(REQUIRED_RECORD_TEMPLATE)
+#     rec["name"] = _hf_model_id_from_url(item.model_url)  # canonical org/name
+#     rec["category"] = "MODEL"
+#     #rec.update(metrics)  (obsolete? - kendall)
+#    # ---- ramp_up_time: overwrite with our concrete metric ----
+#     try:
+#         ru_res = self.calc.metrics["ramp_up_time"].calculate(item.model_url)
+#         if ru_res.score is not None:
+#             rec["ramp_up_time"] = round(float(ru_res.score), 3)
+#         # always record latency we measured
+#         rec["ramp_up_time_latency"] = int(ru_res.latency_ms)
+#     except Exception:
+#         # keep whatever score_model produced; set latency to 0 if needed
+#         rec["ramp_up_time_latency"] = int(rec.get("ramp_up_time_latency", 0) or 0)
+
+#      # ---- bus_factor: overwrite with our concrete metric ----
+#     try:
+#         bf_res = self.calc.metrics["bus_factor"].calculate(item.model_url)
+#         if bf_res.score is not None:
+#             rec["bus_factor"] = round(float(bf_res.score), 3)
+#         rec["bus_factor_latency"] = int(bf_res.latency_ms)
+#     except Exception:
+#         # keep value from score_model if present; ensure latency key exists
+#         rec["bus_factor_latency"] = int(rec.get("bus_factor_latency", 0) or 0)
+
+
+#     # ---- license_score ----
+#     lic_res = self.calc.metrics["license"].calculate(item.model_url)
+
+#     rec["license"] = round(float(lic_res.score), 3)
+#     rec["license_latency"] = int(lic_res.latency_ms)
+
+#     # ---- size_score ----
+#     sz_res = self.calc.metrics["size_score"].calculate(item.model_url)
+
+#     device_scores = getattr(self.calc.metrics["size_score"], "device_scores", {}) or {}
+#     has_size = bool(device_scores)
+#     if has_size:
+#         rec["size_score"] = {
+#             "raspberry_pi": float(device_scores.get("raspberry_pi", 0.0)),
+#             "jetson_nano": float(device_scores.get("jetson_nano", 0.0)),
+#             "desktop_pc": float(device_scores.get("desktop_pc", 0.0)),
+#             "aws_server": float(device_scores.get("aws_server", 0.0)),
+#         }
+#     rec["size_score_latency"] = int(sz_res.latency_ms)
+
+#     # ---- performance_claims (standalone 0.0 or 1.0) ----
+#     try:
+#         pc_res = self.perf_metric.calculate(item.model_url)   # returns MetricResult
+#         score = float(pc_res.score) if (pc_res and pc_res.score is not None) else 0.0
+#         # force it to strict 0.0 / 1.0
+#         rec["performance_claims"] = 1.0 if score >= 0.5 else 0.0
+#         rec["performance_claims_latency"] = int(pc_res.latency_ms or 0)
+#     except Exception:
+#         # fail-safe: no claims detected / fetch failed
+#         rec["performance_claims"] = 0.0
+#         rec["performance_claims_latency"] = 0
+
+#         # ---- code_quality metric ----
+#     try:
+#         cq_res = self.calc.metrics["code_quality"].calculate(item.model_url)
+#         if cq_res.score is not None:
+#             rec["code_quality"] = round(float(cq_res.score), 3)
+#         rec["code_quality_latency"] = int(cq_res.latency_ms)
+#     except Exception as e:
+#         # fallback: keep whatever is already there (default 0.0), set latency 0
+#         rec["code_quality_latency"] = int(rec.get("code_quality_latency", 0) or 0)
+
+
+
+
+#     # recompute net_score (preliminary averaging over finished metrics)
+#     try:
+#         parts = []
+#         latencies = []
+
+#         #ramp_up_time (dummy)
+#         parts.append(float(rec.get("ramp_up_time", 0.0)))
+#         latencies.append(int(rec.get("ramp_up_time_latency", 0) or 0))
+
+#         #license
+#         parts.append(float(rec.get("license", 0.0)))
+#         latencies.append(int(rec.get("license_latency", 0) or 0))
+
+#         #size ('None' if unknown)
+#         if has_size:
+#             parts.append(float(rec["size_score"]["desktop_pc"]))
+#             latencies.append(int(rec.get("size_score_latency", 0) or 0))
+
+#         rec["net_score"] = round(sum(parts) / len(parts), 3) if parts else 0.0
+#         rec["net_score_latency"] = int(max(latencies) if latencies else 0)
+#     except Exception:
+#         pass # keep existing net_score if something odd happens
+
+#     # 4) print one NDJSON object
+#     self.out.write(json.dumps(rec, ensure_ascii=True) + "\n")
+#     self.out.flush()
+
 class NdjsonWriter:
     def __init__(self, out: TextIO | None = None) -> None:
         self.out = out or sys.stdout
         self.calc = MetricsCalculator()
-
         self.perf_metric = PerformanceClaimsMetric()
 
     def write(self, item: ModelItem) -> None:
-        # 1) compute metrics (parallel + timed inside)
-        metrics = score_model(item.model_url, cache_dir=".cache_hf", parallelism=8)
-
-        # 2) build required record
+    # Required template
         rec = dict(REQUIRED_RECORD_TEMPLATE)
-        rec["name"] = _hf_model_id_from_url(item.model_url)  # canonical org/name
+        rec["name"] = _hf_model_id_from_url(item.model_url)
         rec["category"] = "MODEL"
-        rec.update(metrics)
-       # ---- ramp_up_time: overwrite with our concrete metric ----
-        try:
-            ru_res = self.calc.metrics["ramp_up_time"].calculate(item.model_url)
-            if ru_res.score is not None:
-                rec["ramp_up_time"] = round(float(ru_res.score), 3)
-            # always record latency we measured
-            rec["ramp_up_time_latency"] = int(ru_res.latency_ms)
-        except Exception:
-            # keep whatever score_model produced; set latency to 0 if needed
-            rec["ramp_up_time_latency"] = int(rec.get("ramp_up_time_latency", 0) or 0)
 
-         # ---- bus_factor: overwrite with our concrete metric ----
-        try:
-            bf_res = self.calc.metrics["bus_factor"].calculate(item.model_url)
-            if bf_res.score is not None:
-                rec["bus_factor"] = round(float(bf_res.score), 3)
-            rec["bus_factor_latency"] = int(bf_res.latency_ms)
-        except Exception:
-            # keep value from score_model if present; ensure latency key exists
-            rec["bus_factor_latency"] = int(rec.get("bus_factor_latency", 0) or 0)
+        # 1) Run all metrics in parallel
+        metric_objs: Dict[str, Any] = {
+            "ramp_up_time": self.calc.metrics["ramp_up_time"],
+            "bus_factor": self.calc.metrics["bus_factor"],
+            "license": self.calc.metrics["license"],
+            "size_score": self.calc.metrics["size_score"],
+            "dataset_and_code_score": self.calc.metrics["dataset_and_code_score"],
+            "dataset_quality": self.calc.metrics["dataset_quality"],
+            "code_quality": self.calc.metrics["code_quality"],
+            "performance_claims": self.perf_metric,
+        }
 
+        results: Dict[str, MetricResult] = {}
+        max_workers = min(8, len(metric_objs))
 
-        # overwrite license with real metric (README -> license section)
-        lic_res = self.calc.metrics["license"].calculate(item.model_url)
-        rec["license"] = round(float(lic_res.score), 3)
-        rec["license_latency"] = int(lic_res.latency_ms)
-
-        sz_res = self.calc.metrics["size_score"].calculate(item.model_url)
-        has_size = (sz_res.score is not None)
-        if has_size:
-            sz = float(sz_res.score)
-            rec["size_score"] = {
-                "raspberry_pi": sz,
-                "jetson_nano": sz,
-                "desktop_pc": sz,
-                "aws_server": sz,
+        with ThreadPoolExecutor(max_workers=max_workers) as ex:
+            futs = {
+                ex.submit(metric.calculate, item.model_url): metric_name
+                for metric_name, metric in metric_objs.items()
             }
-        rec["size_score_latency"] = int(sz_res.latency_ms)
+            for fut in as_completed(futs):
+                metric_name = futs[fut]
+                try:
+                    results[metric_name] = fut.result()
+                except Exception:
+                    # Ensure a result object exists
+                    results[metric_name] = MetricResult(score=None, latency_ms=0)
+    
+        # 2) Fill per-metric fields + latencies
+        def set_num(rec_key: str, res_key: str) -> None:
+            r = results.get(res_key)
+            if not r:
+                return
+            if r.score is not None:
+                rec[rec_key] = round(float(r.score),3)
+            rec[f"{rec_key}_latency"] = int(r.latency_ms)
+    
+        set_num("ramp_up_time", "ramp_up_time")
+        set_num("bus_factor", "bus_factor")
+        set_num("license", "license")
+        set_num("dataset_and_code_score", "dataset_and_code_score")
+        set_num("dataset_quality", "dataset_quality")
+        set_num("code_quality", "code_quality")
 
-        # ---- performance_claims (standalone 0.0 or 1.0) ----
-        try:
-            pc_res = self.perf_metric.calculate(item.model_url)   # returns MetricResult
-            score = float(pc_res.score) if (pc_res and pc_res.score is not None) else 0.0
-            # force it to strict 0.0 / 1.0
-            rec["performance_claims"] = 1.0 if score >= 0.5 else 0.0
-            rec["performance_claims_latency"] = int(pc_res.latency_ms or 0)
-        except Exception:
-            # fail-safe: no claims detected / fetch failed
-            rec["performance_claims"] = 0.0
-            rec["performance_claims_latency"] = 0
+        # performance_claims (clamped 0/1)
+        pc = results.get("performance_claims")
+        if pc:
+            val = 0.0 if pc.score is None else (1.0 if float(pc.score) >= 0.5 else 0.0)
+            rec["performance_claims"] = val
+            rec["performance_claims_latency"] = int(pc.latency_ms)
+            # normalize stored result so net_score uses 0/1
+            results["performance_claims"] = MetricResult(score=val, latency_ms=pc.latency_ms)
 
-            # ---- code_quality metric ----
-        try:
-            cq_res = self.calc.metrics["code_quality"].calculate(item.model_url)
-            if cq_res.score is not None:
-                rec["code_quality"] = round(float(cq_res.score), 3)
-            rec["code_quality_latency"] = int(cq_res.latency_ms)
-        except Exception as e:
-            # fallback: keep whatever is already there (default 0.0), set latency 0
-            rec["code_quality_latency"] = int(rec.get("code_quality_latency", 0) or 0)
+        # size_score (per-device only)
+        sz = results.get("size_score")
+        if sz:
+            rec["size_score_latency"] = int(sz.latency_ms)
+            device_scores = getattr(self.calc.metrics["size_score"], "device_scores", {}) or {}
+            if device_scores:
+                rec["size_score"] = {
+                    "raspberry_pi": float(device_scores.get("raspberry_pi", 0.0)),
+                    "jetson_nano": float(device_scores.get("jetson_nano", 0.0)),
+                    "desktop_pc": float(device_scores.get("desktop_pc", 0.0)),
+                    "aws_server": float(device_scores.get("aws_server", 0.0)),
+                }
+            # else: keep defaults (0.0s) to signal unknown
 
+        # 3) Net score via calculator (weights; skips None)
+        t0 = time.time_ns()
+        rec["net_score"] = self.calc.calculate_net_score(results)
+        rec["net_score_latency"] = int(round((time.time_ns() - t0) / 1_000_000.0))
 
-
-
-        # recompute net_score (preliminary averaging over finished metrics)
-        try:
-            parts = []
-            latencies = []
-
-            #ramp_up_time (dummy)
-            parts.append(float(rec.get("ramp_up_time", 0.0)))
-            latencies.append(int(rec.get("ramp_up_time_latency", 0) or 0))
-
-            #license
-            parts.append(float(rec.get("license", 0.0)))
-            latencies.append(int(rec.get("license_latency", 0) or 0))
-
-            #size ('None' if unknown)
-            if has_size:
-                parts.append(float(rec["size_score"]["desktop_pc"]))
-                latencies.append(int(rec.get("size_score_latency", 0) or 0))
-
-            rec["net_score"] = round(sum(parts) / len(parts), 3) if parts else 0.0
-            rec["net_score_latency"] = int(max(latencies) if latencies else 0)
-        except Exception:
-            pass # keep existing net_score if something odd happens
-        
-        # 4) print one NDJSON object
+        # 4) Print NDJSON line
         self.out.write(json.dumps(rec, ensure_ascii=True) + "\n")
         self.out.flush()
-        
