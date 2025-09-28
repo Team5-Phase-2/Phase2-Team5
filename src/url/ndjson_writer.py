@@ -58,7 +58,7 @@ class NdjsonWriter:
         url = (url or "").strip()
         # 2) build required record
         rec = dict(REQUIRED_RECORD_TEMPLATE)
-        rec["name"] = hf_model_repo_name(item.model_url)  # canonical org/name
+        rec["name"] = hf_model_repo_name(url)  # canonical org/name
         #rec["name"] = "bert-base-uncased"
         rec["category"] = "MODEL"
         #rec.update(metrics)
