@@ -168,7 +168,9 @@ class NdjsonWriter:
                 latencies.append(int(rec.get("size_score_latency", 0) or 0))
 
             rec["net_score"] = round(sum(parts) / len(parts), 3) if parts else 0.0
-            rec["net_score_latency"] = int(sum(latencies) if latencies else 0)
+            latency_keys = [k for k in rec.keys() if k.endswith('_latency') and k != 'net_score_latency']
+            rec["net_score_latency"] = sum(int(rec.get(k, 0) or 0) for k in latency_keys)
+
         except Exception:
             pass # keep existing net_score if something odd happens
         
