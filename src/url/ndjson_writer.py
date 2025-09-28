@@ -167,6 +167,27 @@ class NdjsonWriter:
                 parts.append(float(rec["size_score"]["desktop_pc"]))
                 latencies.append(int(rec.get("size_score_latency", 0) or 0))
 
+            #bus_factor
+            parts.append(float(rec.get("bus_factor", 0.0)))
+            latencies.append(int(rec.get("bus_factor_latency", 0) or 0))
+
+            #perf_claim
+            parts.append(float(rec.get("performance_claims", 0.0)))
+            latencies.append(int(rec.get("performance_claims_latency", 0) or 0))
+
+            #dataset and code
+            parts.append(float(rec.get("dataset_and_code_score", 0.0)))
+            latencies.append(int(rec.get("dataset_and_code_score_latency", 0) or 0))
+
+            #dataset quality
+            parts.append(float(rec.get("dataset_quality", 0.0)))
+            latencies.append(int(rec.get("dataset_quality_latency", 0) or 0))
+
+            #code quality
+            parts.append(float(rec.get("code_quality", 0.0)))
+            latencies.append(int(rec.get("code_quality_latency", 0) or 0))
+    
+
             rec["net_score"] = round(sum(parts) / len(parts), 3) if parts else 0.0
             rec["net_score_latency"] = int(max(latencies) if latencies else 0)
         except Exception:
