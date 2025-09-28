@@ -181,9 +181,12 @@ def _process_urls(urls, logger):
         # Simplest: treat every line as a MODEL
         try:
             # Build a minimal ModelItem-like shim if your writer needs one
-            class _Item:
-                def __init__(self, model_url): self.model_url = model_url
-            writer.write(_Item(u))
+            #class _Item:
+            #    def __init__(self, model_url): self.model_url = model_url
+            #writer.write(_Item(u))
+
+            writer.write(url)
+            
         except Exception as e:
             err_count += 1
             print(f"writer error for {u}: {e}", file=sys.stderr)
