@@ -2,7 +2,7 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import Dict, Optional
-from scoring import _hf_model_id_from_url
+from src.scoring import _hf_model_id_from_url
 from datetime import datetime
 import time
 import re
