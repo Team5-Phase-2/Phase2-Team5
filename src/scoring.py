@@ -4,7 +4,6 @@ from typing import Dict, Any
 from urllib.parse import urlparse
 import re
 
-'''
 def _hf_model_id_from_url(url: str) -> str:
     """
     Normalize a Hugging Face model reference to a model_id usable with the Hub API.
@@ -42,60 +41,6 @@ def _hf_model_id_from_url(url: str) -> str:
         return s
 
     # Drop non-repo path segments
-    drop = {"tree", "blob", "resolve", "commits", "discussions", "files"}
-    cleaned = []
-    for p in parts:
-        if p in drop:
-            break
-        cleaned.append(p)
-
-    # 1 segment => 'name', 2+ => 'owner/name'
-    return cleaned[0] if len(cleaned) == 1 else f"{cleaned[0]}/{cleaned[1]}"
-'''
-# src/scoring.py
-from urllib.parse import urlparse
-import re
-
-_ID_RE = re.compile(r'^[A-Za-z0-9][\w\-.]*(?:/[A-Za-z0-9][\w\-.]*)?$')
-
-def _hf_model_id_from_url(url: str) -> str:
-    """
-    Normalize a Hugging Face model reference to a model_id usable with the Hub API.
-    Returns either 'owner/name' or a single-segment 'name'.
-    Raises ValueError for non-model URLs/strings.
-    """
-    s = (url or "").strip()
-    if not s:
-        raise ValueError("empty input")
-
-    # hf://owner/name or hf://name
-    if s.startswith("hf://"):
-        tail = [p for p in s[len("hf://"):].split("/") if p]
-        if not tail:
-            raise ValueError("invalid hf://")
-        return "/".join(tail[:2])
-
-    # Plain id (owner/name or single-segment)
-    if not s.startswith("http"):
-        if not _ID_RE.match(s):
-            raise ValueError("not a HF model id")
-        return s
-
-    u = urlparse(s)
-    host = (u.netloc or "").lower()
-    if not host.endswith("huggingface.co"):
-        # Not a HF URL
-        raise ValueError("not a huggingface.co URL")
-
-    parts = [p for p in (u.path or "").lstrip("/").split("/") if p]
-    if not parts:
-        raise ValueError("no path in URL")
-
-    # Reject non-model sections (datasets/listings/etc.)
-    if parts[0] in {"datasets", "models", "spaces", "docs", "organizations", "tasks"}:
-        raise ValueError("not a model URL")
-
-    # Drop non-repo path segments after org/name
     drop = {"tree", "blob", "resolve", "commits", "discussions", "files"}
     cleaned = []
     for p in parts:
