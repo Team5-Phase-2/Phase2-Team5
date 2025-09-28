@@ -173,6 +173,6 @@ class NdjsonWriter:
             pass # keep existing net_score if something odd happens
         
         # 4) print one NDJSON object
-        self.out.write(json.dumps(rec, ensure_ascii=True) + "\n")
+        self.out.write(json.dumps(rec, ensure_ascii=True))
         self.out.flush()
         
