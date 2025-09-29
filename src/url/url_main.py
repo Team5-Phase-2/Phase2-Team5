@@ -83,8 +83,6 @@ from src.url.router import UrlRouter
 from src.url.ndjson_writer import NdjsonWriter, REQUIRED_RECORD_TEMPLATE
 from src.scoring import _hf_model_id_from_url
 
-from src.common.runtime import validate_github_token_once
-
 
 def setup_logging() -> logging.Logger:
     """
@@ -137,7 +135,7 @@ def validate_env(logger: logging.Logger) -> None:
     (required by the grader) and also log it for LOG_LEVEL >= 1.
     """
 
-    '''
+    
     token = os.getenv("GITHUB_TOKEN") or os.getenv("GH_TOKEN")
     if token and not (token.startswith("ghp_") or token.startswith("github_pat_")):
         msg = "Invalid GitHub token provided\n"
@@ -145,7 +143,7 @@ def validate_env(logger: logging.Logger) -> None:
         sys.stderr.write(msg)
         # Also recorded in the log file when LOG_LEVEL >= 1:
         logger.error(msg.strip())
-    '''
+    
 
 
 HF_MODEL_EXCLUDE = re.compile(r'huggingface\.co/(datasets|spaces)/', re.I)
@@ -296,8 +294,7 @@ def run_url_file(url_file: str) -> int:
     Exit 1 only for true fatals (e.g., file missing/unreadable).
     """
     logger = setup_logging()
-    #validate_env(logger)
-    validate_github_token_once()
+    validate_env(logger)
     logger.info("Starting URL processing")
 
     try:
