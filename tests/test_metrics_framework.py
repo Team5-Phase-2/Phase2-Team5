@@ -144,3 +144,4 @@ def test_metrics_dict_has_expected_keys(calc):
         # "dataset_and_code_score",
     }
     assert expected.issubset(set(calc.metrics.keys()))
+
