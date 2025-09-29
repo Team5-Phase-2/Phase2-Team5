@@ -5,6 +5,7 @@ from typing import Dict, Optional
 from src.scoring import _hf_model_id_from_url
 from datetime import datetime
 from src.url.router import ModelItem
+from src.perf_helper import _has_real_metrics
 
 import time
 import re
@@ -16,11 +17,6 @@ import os
 import sys
 
 #==========HELPER for Performance Metric=============================
-PERF_KEYWORDS = [
-    "accuracy","f1","precision","recall","auc","bleu","rouge",
-    "mse","rmse","mae","perplexity","wer","cer","map",
-    "results","benchmark","evaluation","eval","score"
-]
 
 def _fetch_hf_readme_text(model_url: str) -> str:
     """Fetch raw README.md text from a Hugging Face model repo."""
@@ -245,15 +241,16 @@ class LicenseMetric(BaseMetric):
 class PerformanceClaimsMetric(BaseMetric):
     def __init__(self):
         super().__init__("performance_claims")
-    
+
     def _calculate_score(self, model_url: str) -> Optional[float]:
         text = _fetch_hf_readme_text(model_url)
-        if not text.strip():
-            return 0.0  # no README → no claims
-        for kw in PERF_KEYWORDS:
-            if re.search(rf"\b{re.escape(kw)}\b", text, flags=re.IGNORECASE):
-                return 0.75
+        if not text or not text.strip():
+            return 0.0
+
+        if _has_real_metrics(text):
+            return 1.0
         return 0.0
+    
 
 class SizeMetric(BaseMetric):
     def __init__(self):
