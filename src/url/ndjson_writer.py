@@ -11,8 +11,6 @@ from src.metrics_framework import MetricsCalculator
 
 from src.metrics_framework import PerformanceClaimsMetric
 
-from src.common.runtime import validate_github_token_once
-
 REQUIRED_RECORD_TEMPLATE = {
     "name": "",  # model name/url
     "category": "",
@@ -47,9 +45,6 @@ REQUIRED_RECORD_TEMPLATE = {
 #        self.out.write(json.dumps(rec) + "\n")
 class NdjsonWriter:
     def __init__(self, out: TextIO | None = None) -> None:
-
-        validate_github_token_once()
-
         self.out = out or sys.stdout
         self.calc = MetricsCalculator()
 
