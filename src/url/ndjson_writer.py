@@ -127,6 +127,23 @@ class NdjsonWriter:
             # fallback: keep whatever is already there (default 0.0), set latency 0
             rec["code_quality_latency"] = int(rec.get("code_quality_latency", 0) or 0)
 
+                # ---- dataset_and_code_score ----
+        try:
+            dac_res = self.calc.metrics["dataset_and_code_score"].calculate(url)
+            if dac_res.score is not None:
+                rec["dataset_and_code_score"] = round(float(dac_res.score), 3)
+            rec["dataset_and_code_score_latency"] = int(dac_res.latency_ms)
+        except Exception:
+            rec["dataset_and_code_score_latency"] = int(rec.get("dataset_and_code_score_latency", 0) or 0)
+
+        # ---- dataset_quality ----
+        try:
+            dq_res = self.calc.metrics["dataset_quality"].calculate(url)
+            if dq_res.score is not None:
+                rec["dataset_quality"] = round(float(dq_res.score), 3)
+            rec["dataset_quality_latency"] = int(dq_res.latency_ms)
+        except Exception:
+            rec["dataset_quality_latency"] = int(rec.get("dataset_quality_latency", 0) or 0)
 
 
 
