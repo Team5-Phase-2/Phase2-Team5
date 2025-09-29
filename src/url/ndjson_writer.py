@@ -11,6 +11,7 @@ from src.metrics_framework import MetricsCalculator
 
 from src.metrics_framework import PerformanceClaimsMetric
 
+from src.url.classify import classify
 REQUIRED_RECORD_TEMPLATE = {
     "name": "",  # model name/url
     "category": "",
@@ -59,7 +60,7 @@ class NdjsonWriter:
         rec = dict(REQUIRED_RECORD_TEMPLATE)
         rec["name"] = hf_model_repo_name(url)  # canonical org/name
         #rec["name"] = "bert-base-uncased"
-        rec["category"] = "MODEL"
+        rec["category"] = classify(url)
         #rec.update(metrics)
        # ---- ramp_up_time: overwrite with our concrete metric ----
         try:
