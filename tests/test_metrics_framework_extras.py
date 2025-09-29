@@ -1,6 +1,4 @@
-# tests/test_metrics_framework_simple_extras.py
 import math
-
 from src.metrics_framework import (
     MetricsCalculator,
     MetricResult,
@@ -9,6 +7,7 @@ from src.metrics_framework import (
     DatasetCodeMetric,
     CodeQualityMetric,
     BaseMetric,
+    LicenseMetric
 )
 
 SAMPLE_MODEL = "https://huggingface.co/google-bert/bert-base-uncased"
@@ -174,3 +173,37 @@ def test_net_score_with_empty_results_returns_zero():
     """
     calc = MetricsCalculator()
     assert calc.calculate_net_score({}) == 0.0
+
+_LICENSE_MODELS = [
+    # Often have a "## License" section text (not just YAML)
+    "https://huggingface.co/mistralai/Mistral-7B-Instruct-v0.2",
+    "https://huggingface.co/tiiuae/falcon-7b-instruct",
+]
+
+_DATASET_MODELS_TWO_PLUS = [
+    # Likely to mention at least two trusted datasets (e.g., LibriSpeech + Common Voice)
+    "https://huggingface.co/openai/whisper-base",
+]
+
+_DATASET_MODELS_ONE = [
+    # Commonly mention a single trusted dataset (e.g., ImageNet or LibriSpeech)
+    "https://huggingface.co/facebook/wav2vec2-base-960h",
+    "https://huggingface.co/google/vit-base-patch16-224",
+]
+
+_DATASET_MODELS_FALLBACK = [
+    # Likely to include a Datasets section or cardData without trusted names (hits api_ds or sec fallback)
+    "https://huggingface.co/distilbert/distilbert-base-uncased",
+]
+
+def test_license_metric_section_or_fallback_paths_execute():
+    lm = LicenseMetric()
+    # We don't assert exact values (since cards evolve), only that a valid score is produced
+    # which exercises either the "License section" branch or the "fallback scan" branch.
+    for url in _LICENSE_MODELS:
+        res = lm.calculate(url)
+        assert res.score is not None
+        assert 0.0 <= float(res.score) <= 1.0
+        assert isinstance(res.latency_ms, int) and res.latency_ms >= 0
+
+

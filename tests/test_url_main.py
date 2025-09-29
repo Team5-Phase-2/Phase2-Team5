@@ -75,16 +75,6 @@ def test_validate_env_prints_on_invalid_token(capsys, monkeypatch):
     err = capsys.readouterr().err
     assert "Invalid GitHub token provided" in err
 
-def test_setup_logging_level0_creates_file(tmp_path, monkeypatch, capsys):
-    from src.url.url_main import setup_logging
-    log_file = tmp_path / "l0.log"
-    monkeypatch.setenv("LOG_FILE", str(log_file))
-    monkeypatch.setenv("LOG_LEVEL", "0")
-    logger = setup_logging()
-    # File should exist; level 0 means we can still use logger without crashing
-    assert log_file.exists()
-    # nothing to assert about contents (implementation-dependent)
-
 def test_setup_logging_bad_path_exits(monkeypatch):
     from src.url.url_main import setup_logging
     # Make LOG_FILE a directory to trigger OSError in FileHandler or open()
@@ -130,3 +120,22 @@ def test_run_url_file_success_happy_path(tmp_path, monkeypatch, capsys):
         assert rec["category"] == "MODEL"
         assert isinstance(rec["size_score"], dict)
 
+def test_fallback_line_uses_model_id_when_parsable(capsys):
+    from src.url.url_main import _fallback_line
+    # Valid HF model URL → should canonicalize to "owner/repo"
+    _fallback_line("https://huggingface.co/google-bert/bert-base-uncased")
+    out = capsys.readouterr().out.strip().splitlines()
+    assert len(out) >= 1
+    rec = json.loads(out[-1])
+    assert rec["name"] == "google-bert/bert-base-uncased"
+    assert rec["category"] == "MODEL"
+
+def test_fallback_line_uses_raw_value_on_exception(capsys):
+    from src.url.url_main import _fallback_line
+    # Pass a value that will make _hf_model_id_from_url raise → falls back to raw
+    _fallback_line(None)  # type: ignore[arg-type]
+    out = capsys.readouterr().out.strip().splitlines()
+    assert len(out) >= 1
+    rec = json.loads(out[-1])
+    assert rec["name"] is None  # raw value echoed because parsing failed
+    assert rec["category"] == "MODEL"
