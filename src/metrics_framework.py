@@ -5,7 +5,8 @@ from typing import Dict, Optional
 from src.scoring import _hf_model_id_from_url
 from datetime import datetime
 from src.url.router import ModelItem
-from src.perf_helper import _has_real_metrics
+from src.perf_helper import has_real_metrics
+from src.repo_fetch import download_hf_repo_subset, read_text_if_exists
 
 import time
 import re
@@ -243,12 +244,15 @@ class PerformanceClaimsMetric(BaseMetric):
         super().__init__("performance_claims")
 
     def _calculate_score(self, model_url: str) -> Optional[float]:
-        text = _fetch_hf_readme_text(model_url)
-        if not text or not text.strip():
-            return 0.0
+        # Download repo files locally (non-API) and analyze from disk
+        repo_dir = download_hf_repo_subset(model_url)
 
-        if _has_real_metrics(text):
-            return 1.0
+        # Prefer README; fall back to model_index.json or README.yaml
+        for name in ("README.md", "model_index.json", "README.yaml"):
+            text = read_text_if_exists(repo_dir, name)
+            if text and text.strip():
+                return 1.0 if has_real_metrics(text) else 0.0
+
         return 0.0
     
 
