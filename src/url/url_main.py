@@ -85,23 +85,28 @@ from src.scoring import _hf_model_id_from_url
 
 
 def setup_logging() -> logging.Logger:
-    """
-    Optional file logging controlled by LOG_FILE + LOG_LEVEL.
-    - If LOG_FILE is invalid/unwritable: write exact message to stderr and exit(1).
-    - LOG_LEVEL: "0" (create/touch an empty log file), "1" (INFO), other (DEBUG).
-    """
-    level = os.getenv("LOG_LEVEL", "0")
-    log_path = os.getenv("LOG_FILE")
-
     logger = logging.getLogger("ece461")
     logger.handlers.clear()
     logger.propagate = False
-    logger.setLevel(logging.DEBUG)  # handler filters
+    logger.setLevel(logging.DEBUG)
+
+    log_path = os.getenv("LOG_FILE")
+    level_str = os.getenv("LOG_LEVEL", "0")   # <-- define it here!
 
     if not log_path:
-        return logger  # no file logging requested
+        return logger
 
-    # Try to open the log file and fail fast on error (grader expects this)
+    # Fail if file does not exist
+    if not os.path.exists(log_path):
+        sys.stderr.write("Invalid log file path\n")
+        sys.exit(1)
+
+    handler_level = {
+        "0": logging.CRITICAL + 1,
+        "1": logging.INFO,
+        "2": logging.DEBUG,
+    }.get(level_str, logging.DEBUG)
+
     try:
         fh = logging.FileHandler(log_path, mode="w", encoding="utf-8")
     except OSError:
@@ -110,23 +115,11 @@ def setup_logging() -> logging.Logger:
 
     fmt = logging.Formatter("%(asctime)s %(levelname)s %(message)s")
     fh.setFormatter(fmt)
-
-    if level == "0":
-        # Touch file but keep it blank
-        fh.setLevel(logging.CRITICAL + 1)
-        try:
-            open(log_path, "a").close()
-        except OSError:
-            # Should not happen because FileHandler succeeded, but ignore if it does
-            pass
-        fh.setLevel(logging.CRITICAL + 1)  # effectively silent
-    elif level == "1":
-        fh.setLevel(logging.INFO)
-    else:
-        fh.setLevel(logging.DEBUG)
-
+    fh.setLevel(handler_level)
     logger.addHandler(fh)
+
     return logger
+
 
 
 def validate_env(logger: logging.Logger) -> None:
