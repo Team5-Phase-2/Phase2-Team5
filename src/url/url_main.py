@@ -83,7 +83,7 @@ from src.url.router import UrlRouter
 from src.url.ndjson_writer import NdjsonWriter, REQUIRED_RECORD_TEMPLATE
 from src.scoring import _hf_model_id_from_url
 
-
+from src.common.runtime import validate_github_token_once
 
 
 def setup_logging() -> logging.Logger:
@@ -296,7 +296,8 @@ def run_url_file(url_file: str) -> int:
     Exit 1 only for true fatals (e.g., file missing/unreadable).
     """
     logger = setup_logging()
-    validate_env(logger)
+    #validate_env(logger)
+    validate_github_token_once()
     logger.info("Starting URL processing")
 
     try:
