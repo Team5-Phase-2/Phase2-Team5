@@ -1,7 +1,8 @@
-# ece30861-team9
+# ece30861-team5
 
 # Members
-- Asem Ibrahim
-- Jaeyun Kim
-- Jun Lim
-- Kendall Lanning
+- Andrew Kloosterman
+- Eli Wood
+- James Doyle
+
+This marks Phase 2 of the ECE 30861 Semester Project.
