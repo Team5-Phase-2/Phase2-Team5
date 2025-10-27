@@ -23,5 +23,5 @@ jobs:
     - name: Upload dummy file to AWS Lambda
       run: |
         aws lambda update-function-code \
-          --function-name your-lambda-function-name \
+          --function-name http-function-url-tutorial \
           --zip-file fileb://lambda.zip
