@@ -1,13 +1,12 @@
-# Testing & coverage
+
 pytest
 pytest-cov
 
-# Code quality tools
 flake8
 isort
 mypy
 
-# Hugging Face ecosystem
+
 transformers
 huggingface_hub
 
