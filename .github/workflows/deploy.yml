@@ -27,5 +27,5 @@ jobs:
     uses: ./.github/workflows/aws_lambda_deploy.yml
     with:
       lambda-dir: Register_Artifact_Setup
-      path: ./backed
+      path: ./backend
 
