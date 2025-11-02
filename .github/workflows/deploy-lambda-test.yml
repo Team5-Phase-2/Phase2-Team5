@@ -8,6 +8,9 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
     - name: Create dummy file
       run: |
         echo "import random" > dummy_lambda.py
@@ -27,3 +30,4 @@ jobs:
         aws lambda update-function-code \
           --function-name http-function-url-tutorial \
           --zip-file fileb://lambda.zip
+
