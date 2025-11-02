@@ -51,11 +51,9 @@ def lambda_handler(event, context):
         response_payload_str = response['Payload'].read().decode('utf-8')
         rate_result = json.loads(response_payload_str)
 
-        final_status_code = rate_result.get("statusCode", 201)
-        if(final_status_code == 201):
-            final_body_content = rate_result.get("body", {})
-        else: 
-             final_body_content = {}
+        final_status_code = rate_result.get("statusCode", 403)
+        final_body_content = rate_result.get("body", {})
+        
             
         if isinstance(final_body_content, dict):
              final_body_string = json.dumps(final_body_content)
