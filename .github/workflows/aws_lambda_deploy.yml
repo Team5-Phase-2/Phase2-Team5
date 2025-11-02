@@ -9,6 +9,12 @@ on:
       path:
         required: true
         type: string
+    secrets:
+      LAMBDA_AWS_ACCESS_KEY:
+        required: true
+      LAMBDA_AWS_SECRET_ACCESS_KEY:
+        required: true
+
 
 jobs:
   deploy:
