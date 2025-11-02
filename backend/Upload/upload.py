@@ -1,6 +1,7 @@
 import json
 import os
 import uuid
+import hashlib
 from datetime import datetime
 import boto3
 from botocore.exceptions import ClientError
@@ -72,7 +73,10 @@ def lambda_handler(event, context):
     name = model_url.rstrip("/").split("/")[-1]
 
     #create almost perfect unique id to match spec (uses last 10 digits of int converted uuid)
-    model_id = int(str(uuid.uuid4().int)[-10:])
+    #model_id = int(str(uuid.uuid4().int)[-10:])
+    hash_object = hashlib.sha256(name.encode())
+    numeric_hash = int(hash_object.hexdigest(), 16) 
+    model_id = numeric_hash % 9999999967
 
     #Create output to upload and return 
     output = {
