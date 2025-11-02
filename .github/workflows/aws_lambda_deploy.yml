@@ -34,8 +34,8 @@ jobs:
 
       - name: Upload to AWS Lambda Function ${{ inputs.lambda-dir }}
         run: |
-          cd ${{ inputs.path }}
-          zip -r lambda.zip ./${{ inputs.lambda-dir }} ./utils/.
+          cd ${{ inputs.path }}/${{ inputs.lambda-dir }}
+          zip -r lambda.zip .
           aws lambda update-function-code \
             --function-name ${{ inputs.lambda-dir }} \
             --zip-file fileb://lambda.zip
