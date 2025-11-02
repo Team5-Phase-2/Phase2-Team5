@@ -1,6 +1,6 @@
 # metrics/utils.py
 import requests
-from src.scoring import _hf_model_id_from_url
+from scoring import _hf_model_id_from_url
 
 def fetch_hf_readme_text(model_url: str) -> str:
     """Fetch raw README.md text from a Hugging Face model repo."""
