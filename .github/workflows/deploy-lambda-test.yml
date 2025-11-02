@@ -8,6 +8,9 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+    
     - name: Create dummy file
       run: |
         echo "print('Hello from dummy Lambda!')" > dummy_lambda.py
