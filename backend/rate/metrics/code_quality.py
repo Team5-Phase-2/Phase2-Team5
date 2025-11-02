@@ -1,7 +1,7 @@
 # metrics/code_quality.py
 from typing import Optional, Tuple
 import time, tempfile, subprocess, sys, os, requests
-from src.scoring import _hf_model_id_from_url
+from scoring import _hf_model_id_from_url
 
 def code_quality(model_url: str) -> Tuple[Optional[float], int]:
     start_ns = time.time_ns()

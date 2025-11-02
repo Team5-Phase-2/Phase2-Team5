@@ -1,8 +1,7 @@
 # src/scoring.py
 from __future__ import annotations
-from typing import Dict, Any
 from urllib.parse import urlparse
-import re
+
 
 def _hf_model_id_from_url(url: str) -> str:
     """

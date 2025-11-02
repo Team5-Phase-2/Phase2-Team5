@@ -1,8 +1,8 @@
 # src/repo_fetch.py
 from __future__ import annotations
 from pathlib import Path
-import tempfile, shutil, requests
-from src.scoring import _hf_model_id_from_url
+import tempfile, requests
+from scoring import _hf_model_id_from_url
 
 # Candidate raw URLs to try (main/master)
 _CANDIDATES = [

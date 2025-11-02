@@ -6,7 +6,7 @@ import sys
 from typing import TextIO
 from src.url.hf_name import hf_model_repo_name
 from src.url.router import ModelItem
-from src.scoring import _hf_model_id_from_url
+from backend.rate.scoring import _hf_model_id_from_url
 from src.metrics_framework import MetricsCalculator
 
 from src.metrics_framework import PerformanceClaimsMetric

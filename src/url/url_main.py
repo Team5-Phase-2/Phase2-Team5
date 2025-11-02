@@ -81,7 +81,7 @@ from typing import Iterator, Iterable
 
 from src.url.router import UrlRouter
 from src.url.ndjson_writer import NdjsonWriter, REQUIRED_RECORD_TEMPLATE
-from src.scoring import _hf_model_id_from_url
+from backend.rate.scoring import _hf_model_id_from_url
 
 
 def setup_logging() -> logging.Logger:
