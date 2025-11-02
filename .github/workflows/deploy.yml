@@ -12,7 +12,7 @@ jobs:
   deploy-rate:
     uses: ./.github/workflows/aws_lambda_deploy.yml
     with:
-      lambda-dir: Rate
+      lambda-dir: rate
       path: ./backend
     secrets:
       LAMBDA_AWS_ACCESS_KEY: ${{ secrets.LAMBDA_AWS_ACCESS_KEY }}
