@@ -1,7 +1,7 @@
 # metrics/dataset_quality.py
 from typing import Optional, Tuple
 import time, requests, re
-from src.scoring import _hf_model_id_from_url
+from scoring import _hf_model_id_from_url
 from .utils import fetch_hf_readme_text
 
 def dataset_quality(model_url: str) -> Tuple[Optional[float], int]:

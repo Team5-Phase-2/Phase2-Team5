@@ -1,7 +1,7 @@
 # metrics/size_score.py
 from typing import Optional, Tuple
 import time, requests, os, math
-from src.scoring import _hf_model_id_from_url
+from scoring import _hf_model_id_from_url
 
 def size_score(model_url: str) -> Tuple[Optional[float], int]:
     start_ns = time.time_ns()

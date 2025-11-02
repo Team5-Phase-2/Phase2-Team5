@@ -1,7 +1,7 @@
 # metrics/dataset_code.py
 from typing import Optional, Tuple
 import time, requests
-from src.scoring import _hf_model_id_from_url
+from scoring import _hf_model_id_from_url
 from .utils import fetch_hf_readme_text
 
 def dataset_and_code_score(model_url: str) -> Tuple[Optional[float], int]:

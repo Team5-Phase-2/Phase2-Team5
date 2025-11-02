@@ -3,6 +3,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Dict, Tuple
 from metrics.registry import METRIC_REGISTRY
 
+
 def run_all_metrics(model_url: str, max_workers: int = 8) -> Dict[str, Tuple[float, int]]:
     
     results = {}

@@ -2,7 +2,7 @@
 from typing import Optional, Tuple
 import time, re
 from .utils import fetch_hf_readme_text
-from src.scoring import _hf_model_id_from_url
+from scoring import _hf_model_id_from_url
 
 def license_score(model_url: str) -> Tuple[Optional[float], int]:
     start_ns = time.time_ns()

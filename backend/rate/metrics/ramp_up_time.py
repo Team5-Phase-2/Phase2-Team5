@@ -2,7 +2,7 @@
 from typing import Optional, Tuple
 import time
 import requests, math
-from src.scoring import _hf_model_id_from_url
+from scoring import _hf_model_id_from_url
 
 def ramp_up_time(model_url: str) -> Tuple[Optional[float], int]:
     """Return (score, latency_ms)."""

@@ -3,7 +3,7 @@ from typing import Optional, Tuple
 import time
 import requests, math
 from datetime import datetime
-from src.scoring import _hf_model_id_from_url
+from scoring import _hf_model_id_from_url
 
 def bus_factor(model_url: str) -> Tuple[Optional[float], int]:
     start_ns = time.time_ns()
