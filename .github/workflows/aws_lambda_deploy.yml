@@ -1,10 +1,14 @@
 name: Deploy AWS Lambda Functions
 
 on:
-  workflow_dispatch:
-  push:
-    branches:
-      - main
+  workflow_call:
+    inputs:
+      lambda-dir:
+        required: true
+        type: string
+      path:
+        required: true
+        type: string
 
 jobs:
   deploy:
@@ -24,8 +28,8 @@ jobs:
 
       - name: Upload to AWS Lambda Function ${{ inputs.lambda-dir }}
         run: |
-          cd ${{ inputs.path }} \
-          zip -r lambda.zip ./${{ inputs.lambda-dir }} ./utils/* \
+          cd ${{ inputs.path }}
+          zip -r lambda.zip ./${{ inputs.lambda-dir }} ./utils/.
           aws lambda update-function-code \
             --function-name ${{ inputs.lambda-dir }} \
             --zip-file fileb://lambda.zip

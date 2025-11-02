@@ -1,6 +1,7 @@
 name: Deploymnent to AWS
 
 on:
+  workflow_dispatch:
   push:
     branches:
       - main
@@ -22,5 +23,9 @@ jobs:
 
   ## ENDPOINT LAMBDA FUNCTION DEPLOYMENT ##
   # note: use path: ./backend/endpoint_setup
-
+  deploy-register-artifact-setup:
+    uses: ./.github/workflows/aws_lambda_deploy.yml
+    with:
+      lambda-dir: Register_Artifact_Setup
+      path: ./backed
 
