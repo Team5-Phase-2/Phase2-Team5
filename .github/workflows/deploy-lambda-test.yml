@@ -17,6 +17,7 @@ jobs:
         echo "print(random.random())" >> dummy_lambda.py
         echo "print('Hello from dummy Lambda!')" >> dummy_lambda.py
         zip -r lambda.zip dummy_lambda.py
+        zip -r rate.zip backend/rate
 
     - name: Configure AWS credentials
       uses: aws-actions/configure-aws-credentials@v2
