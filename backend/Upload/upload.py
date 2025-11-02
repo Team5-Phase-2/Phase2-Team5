@@ -28,8 +28,10 @@ def lambda_handler(event, context):
     s3 = boto3.client("s3")
 
     #Get artifact type
+    '''
     path_params = event.get("pathParameters", {}) or {}
     artifact_type = path_params.get("artifact_type")
+    '''
 
     #Confirm JSON body exists
     try:
@@ -40,7 +42,8 @@ def lambda_handler(event, context):
             "body": json.dumps({"error": "Invalid JSON body"})
         }
 
-    #Expected filds in body 
+    #Expected filds in body
+    artifact_type = body.get("artifact_type")
     model_url = body.get("model_url")
     results = body.get("results")
     net_score = body.get("net_score")
