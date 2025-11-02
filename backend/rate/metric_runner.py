@@ -4,6 +4,10 @@ from typing import Dict, Tuple
 from metrics.registry import METRIC_REGISTRY
 import json
 from run_metrics import calculate_net_score
+import boto3
+
+
+lambda_client = boto3.client('lambda')
 
 def run_all_metrics(event, context):
     """
@@ -14,22 +18,25 @@ def run_all_metrics(event, context):
     print("Received event from ArtifactHandler:", json.dumps(event))
 
     try:
-        # Step 1: Extract payload from the EventBridge wrapper
-        detail = event.get("detail", {})
-        payload = detail.get("responsePayload", {})
-        body = payload.get("body")
-
-        # Step 2: Parse the inner JSON (your actual return value)
-        data = json.loads(body) if body else {}
-
+        # Step 1: Extract payload directly from the event (no EventBridge parsing needed!)
+        data = event
         artifact_type = data.get("artifact_type")
         model_url = data.get("source_url")
 
         print(f"Processing artifact: {artifact_type} | URL: {model_url}")
 
+        if not artifact_type or not model_url:
+            return {
+                "statusCode": 400,
+                "body": json.dumps({"error": "Missing artifact_type or source_url in direct payload."})
+            }
+
     except Exception as e:
-        print("Error in Rate Lambda:", str(e))
-        raise
+        # Handle unexpected errors during initial payload parsing
+        return {
+            "statusCode": 500,
+            "body": json.dumps({"error": f"Internal processing error: {str(e)}"})
+        }
 
     max_workers = 8
     
@@ -55,26 +62,51 @@ def run_all_metrics(event, context):
     net_score = calculate_net_score(results)
 
     # 3. Determine whether to ingest (example rule)
-    ingest = True
     for k, (score, latency) in results.items():
-        if score < 0.5:
-            ingest = False
-            break
-
+        if score is None or score < 0.5:
+            return {
+                "statusCode": 424,
+                "body": {}
+            }
         
-
-    # 4. Construct output for the next Lambda
-    output = {
+    output_payload = {
         "artifact_type": artifact_type,
         "model_url": model_url,
         "results": results,
-        "net_score": net_score,
-        "ingest": ingest,
+        "net_score": net_score
     }
 
-    print("Returning output:", json.dumps(output))
 
-    return {
-        "statusCode": 200,
-        "body": json.dumps(output)
-    }
+    try:
+        # The next function should also be called synchronously to ensure a final
+        # 201/202 status can be returned from the API Gateway chain.
+        ingestor_response = lambda_client.invoke(
+            FunctionName="Upload",
+            InvocationType='RequestResponse',
+            Payload=json.dumps(output_payload)
+        )
+        
+        # Check for errors from the Ingestor
+        if 'FunctionError' in ingestor_response:
+                # If the Ingestor failed, tell the client it was a server error
+                error_payload = ingestor_response['Payload'].read().decode('utf-8')
+                print(f"Ingestor failed: {error_payload}")
+                return {
+                "statusCode": 500,
+                "body": json.dumps({"error": "Processing failed in the Ingestor service."})
+            }
+            
+        # If Ingestor succeeded, assume it returns a clean API Gateway-compatible response
+        # Read and parse the Ingestor's clean response
+        ingestor_result_str = ingestor_response['Payload'].read().decode('utf-8')
+        ingestor_result = json.loads(ingestor_result_str)
+        
+        # Return the Ingestor's statusCode and body back up the chain to the API client
+        return ingestor_result
+    
+    except Exception as e:
+        print(f"CRITICAL ERROR during synchronous Ingestor invocation: {e}")
+        return {
+            "statusCode": 500,
+            "body": json.dumps({"error": "Internal error during final step handoff."})
+        }

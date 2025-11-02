@@ -1,4 +1,7 @@
 import json
+import boto3
+
+lambda_client = boto3.client('lambda')
 
 def lambda_handler(event, context):
     """
@@ -30,16 +33,46 @@ def lambda_handler(event, context):
 
     # 3. Process the artifact
     # (replace with real logic)
-    result = {
+    payload_for_Rate = {
         "artifact_type": artifact_type,
         "source_url": url,
         "status": "received",
-        "message": f"Artifact type '{artifact_type}' accepted."
     }
 
-    # 4. Return JSON result
-    # EventBridge will pass this into 'Rate' Lambda as responsePayload
-    return {
-        "statusCode": 200,
-        "body": json.dumps(result)
-    }
+    try:
+        # 4. Asynchronously invoke the 'Rate' Lambda
+        # InvocationType='Event' makes it non-blocking (Fire-and-Forget)
+        response = lambda_client.invoke(
+            FunctionName= "Rate",
+            InvocationType='RequestResponse',  # <<< KEY CHANGE: Async Call
+            Payload=json.dumps(payload_for_Rate)
+        )
+
+        response_payload_str = response['Payload'].read().decode('utf-8')
+        rate_result = json.loads(response_payload_str)
+
+        final_status_code = rate_result.get("statusCode", 403)
+        if(final_status_code == 201):
+            final_body_content = rate_result.get("body", {})
+        else: 
+             final_body_content = {}
+            
+        if isinstance(final_body_content, dict):
+             final_body_string = json.dumps(final_body_content)
+        else:
+             # Assumes 'Rate' already returned the body as a JSON string
+             final_body_string = final_body_content
+
+
+        # 4. Return the final result to the API Gateway user/client
+        return {
+            "statusCode": final_status_code,
+            "body": final_body_string
+        }
+
+    except Exception as e:
+            print(f"CRITICAL ERROR during synchronous invocation: {e}")
+            return {
+                "statusCode": 403,
+                "body": json.dumps({"error": "Internal error during synchronous processing."})
+            }
