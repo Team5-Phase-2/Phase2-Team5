@@ -28,6 +28,14 @@ jobs:
       LAMBDA_AWS_ACCESS_KEY: ${{ secrets.LAMBDA_AWS_ACCESS_KEY }}
       LAMBDA_AWS_SECRET_ACCESS_KEY: ${{ secrets.LAMBDA_AWS_SECRET_ACCESS_KEY }}
 
+  deploy-get-artifact-id:
+    uses: ./.github/workflows/aws_lambda_deploy.yml
+    with:
+      lambda-dir: Get_Artifact_Id
+      path: ./backend
+    secrets:
+      LAMBDA_AWS_ACCESS_KEY: ${{ secrets.LAMBDA_AWS_ACCESS_KEY }}
+      LAMBDA_AWS_SECRET_ACCESS_KEY: ${{ secrets.LAMBDA_AWS_SECRET_ACCESS_KEY }}
 
   ## ENDPOINT LAMBDA FUNCTION DEPLOYMENT ##
   # note: use path: ./backend/endpoint_setup
