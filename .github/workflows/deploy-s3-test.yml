@@ -1,9 +1,10 @@
-name: Deploymnent of Static Frontend to S3
+name: Deployment of Static Frontend to S3
 
 on:
   workflow_dispatch:
   push:
-    main
+    branches:
+      main
 
 jobs:
   deploy:
