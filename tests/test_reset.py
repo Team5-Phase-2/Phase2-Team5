@@ -1,7 +1,6 @@
 import boto3
 from moto import mock_aws
 from backend.Reset.Reset import wipe_s3_bucket
-import pytest
 
 # Test using Moto
 @mock_aws
@@ -22,7 +21,7 @@ def test_delete_all_files():
   assert len(listed["Contents"]) == 3
 
   # Call the function to delete all files
-  wipe_s3_bucket(bucket_name)
+  wipe_s3_bucket(None, None)
 
   # Ensure the bucket is empty afterward
   listed_after = s3.list_objects_v2(Bucket=bucket_name)
