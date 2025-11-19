@@ -51,7 +51,7 @@ def lambda_handler(event, context):
 
   # TODO: implement actual size calculation (S3 head_object, sum dependencies)
   
-  # Send url into Sagemaker to get size based on dependancy var.
+  # Send url into Sagemaker to get size based on dependency var.
 
 
   # For now return a placeholder success response indicating sanitized input
