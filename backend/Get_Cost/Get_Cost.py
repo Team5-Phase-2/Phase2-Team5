@@ -8,7 +8,7 @@ def lambda_handler(event, context):
     Parameters:
       artifact_type* : [model, dataset, code]
       id* : string
-      dependancy: bool (false)
+      dependency: bool (false)
 
 
     Return:
