@@ -35,7 +35,7 @@ def lambda_handler(event, context):
   # Check existence of artifact store configuration
   s3_bucket = os.environ.get("REGISTRY_BUCKET")
   s3 = boto3.client("s3")
-  s3_key = f"/artifacts/{artifact_type}/{id}/metadata.json"
+  s3_key = f"artifacts/{artifact_type}/{id}/metadata.json"
 
   try:
     response = s3.get_object(Bucket=s3_bucket, Key=s3_key)
