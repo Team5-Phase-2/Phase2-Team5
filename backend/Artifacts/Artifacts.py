@@ -21,15 +21,38 @@ def lambda_handler(event, context):
       "body": json.dumps({"error": "REGISTRY_BUCKET not configured"}),
     }
 
-  # Sanitize request
-  sanitized, error_response = sanitize_request(event)
-  if error_response:
-    print(f"Bad Sanitize = {error_response}")
-    return error_response
-
-  # name is kept for compatibility but not used to filter results here
-  name = sanitized["name"]
-  types = sanitized["types"]
+  try:
+    body = json.loads(event.get("body", "[]"))
+  except json.JSONDecodeError:
+      return {
+          "statusCode": 400,
+          "body": json.dumps({"error": "Invalid JSON"})
+      }
+  
+  # Expecting an array from the client
+  if not isinstance(body, list) or len(body) == 0:
+      return {
+          "statusCode": 400,
+          "body": json.dumps({"error": "Request body must be a non-empty array"})
+      }
+  
+  item = body[0]   # you said we always get an array and you only need one object
+  
+  name = item.get("name")
+  types = item.get("types")
+  
+  # Validate
+  if not isinstance(name, str) or name.strip() == "":
+      return {
+          "statusCode": 400,
+          "body": json.dumps({"error": "Invalid 'name'; must be a non-empty string."})
+      }
+  
+  if not isinstance(types, list):
+      return {
+          "statusCode": 400,
+          "body": json.dumps({"error": "'types' must be an array."})
+      }
 
   # Handle pagination offset
   try:
@@ -164,3 +187,4 @@ def sanitize_request(event):
     types = list(allowed_types)
 
   return {"name": name, "types": types}, None
+
