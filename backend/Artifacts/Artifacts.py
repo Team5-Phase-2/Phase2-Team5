@@ -43,6 +43,9 @@ def lambda_handler(event, context):
   paginator = s3.get_paginator("list_objects_v2")
   response_objects = []
 
+  if types == []:
+    types = ["model", "dataset", "code"]
+
   for artifact_type in types:
     prefix = f"artifacts/{artifact_type}"
 
