@@ -35,13 +35,7 @@ def lambda_handler(event, context):
     '''
 
     #Confirm JSON body exists
-    try:
-        body = json.loads(event.get("body", "{}"))
-    except json.JSONDecodeError:
-        return {
-            "statusCode": 400,
-            "body": json.dumps({"error": "Invalid JSON body"})
-        }
+    body = event
 
     #Expected filds in body
     artifact_type = body.get("artifact_type")
