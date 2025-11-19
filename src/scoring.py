@@ -1,19 +1,27 @@
-# src/scoring.py
+"""Utilities for normalizing Hugging Face model references.
+
+Only a small helper is exposed: `_hf_model_id_from_url` which accepts
+various HF URL forms and returns an `owner/name` or single-segment
+model name that's suitable for the Hub API paths.
+"""
+
 from __future__ import annotations
+
 from urllib.parse import urlparse
 
 
 def _hf_model_id_from_url(url: str) -> str:
-    """
-    Normalize a Hugging Face model reference to a model_id usable with the Hub API.
-    Works for:
+    """Normalize a Hugging Face model reference to an HF model id.
+
+    Accepts inputs like:
       - https://huggingface.co/bert-base-uncased
-      - https://huggingface.co/google/gemma-3-270m
       - https://huggingface.co/google/gemma-3-270m/tree/main
       - hf://google/gemma-3-270m
       - google/gemma-3-270m
-      - bert-base-uncased
-    Returns either 'owner/name' or a single-segment 'name'.
+
+    Returns either 'owner/name' or a single-segment 'name'. If the URL
+    does not look like a HF repo URL the original input is returned so
+    callers can decide how to handle it.
     """
     s = url.strip()
 
@@ -49,31 +57,3 @@ def _hf_model_id_from_url(url: str) -> str:
 
     # 1 segment => 'name', 2+ => 'owner/name'
     return cleaned[0] if len(cleaned) == 1 else f"{cleaned[0]}/{cleaned[1]}"
-
-    
-'''
-def score_model(model_url: str, *, cache_dir: str | None = None, parallelism: int = 8) -> Dict[str, Any]:
-    """
-    Dummy scorer for smoke-testing stdout.
-    Produces deterministic pseudo-random values in [0,1] based on the model id.
-    Returns only a few fields; your NDJSON writer's template can fill the rest.
-    """
-    model_id = _hf_model_id_from_url(model_url)
-
-    # deterministic RNG so the same model gets the same "random" scores
-    seed = hash(model_id) & 0xFFFFFFFF
-    rng = random.Random(seed)
-
-    ramp_up_time = round(rng.random(), 3)  # 0..1
-    license_score = round(rng.random(), 3) # 0..1
-    net_score = round((ramp_up_time + license_score) / 2.0, 3)
-
-    return {
-        "ramp_up_time": ramp_up_time,
-        "ramp_up_time_latency": rng.randint(1, 25),  # milliseconds
-        "license": license_score,
-        "license_latency": rng.randint(1, 25),       # milliseconds
-        "net_score": net_score,
-        "net_score_latency": rng.randint(5, 60),     # milliseconds
-    }
-'''

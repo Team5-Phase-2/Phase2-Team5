@@ -10,12 +10,30 @@ def license_score(model_url: str) -> Tuple[Optional[float], int]:
         licenses_restrictive = (
             r"\bagpl(?:-?3(?:\.0)?)?(?:-only|-or-later|\+)?\b",
             r"\bgpl(?:-?2(?:\.0)?|-?3(?:\.0)?)(?:-only|-or-later|\+)?\b",
+            # metrics/license_score.py
+            """backend.Rate.metrics.license_score
+
+            Heuristic license classifier that assigns a permissiveness score based on
+            license text found in the repository README or license sections.
+
+            Returns a float in [0.0, 1.0] where 1.0 indicates permissive licensing and
+            0.0 indicates restrictive or proprietary licensing. `None` is returned on
+            error with latency included as the second tuple item.
+            """
+
             r"\bgplv2\b", r"\bgplv3\b",
             r"\bcc-?by-?nc\b", r"\bcc-?nc\b", r"\bnon[-\s]?commercial\b", r"\bnoncommercial\b",
             r"\bresearch[-\s]?only\b", r"\bresearch[-\s]?use\b",
             r"\bno[-\s]?derivatives?\b",
-            r"\bproprietary\b", r"\bclosed[-\s]?source\b",
-        )
+            r"\bproprietary\b", r"\bclosed[-\s]?source\b",)
+        
+        """Return (license_score, latency_ms).
+
+        The function attempts to extract license-related text from the README or
+        model metadata, normalizes it, and matches it against a set of regex
+        patterns for restrictive, unclear, and permissive licenses.
+        """
+
         licenses_unclear = (
             r"\bllama[-\s]?2\b", r"\bmeta[-\s]?llama\b", r"\bllama[-\s]?2[-\s]?community[-\s]?license\b",
             r"\bgemma\b", r"\bgemma[-\s]?terms\b", r"\btii[-\s]?falcon[-\s]?license\b",

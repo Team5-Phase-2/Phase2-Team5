@@ -1,7 +1,14 @@
 # src/repo_fetch.py
+"""Helpers to fetch a small subset of files from a Hugging Face repo.
+
+Only a few common artifact names are attempted (README, model_index,
+license files). Files are downloaded via the raw file HTTP endpoints and
+placed into a temporary directory which is returned to the caller.
+"""
 from __future__ import annotations
 from pathlib import Path
-import tempfile, requests
+import tempfile
+import requests
 from .scoring import _hf_model_id_from_url
 
 # Candidate raw URLs to try (main/master)

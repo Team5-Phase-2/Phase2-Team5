@@ -1,10 +1,25 @@
-# metrics/dataset_code.py
+"""backend.Rate.metrics.dataset_code
+
+Assess whether a model repository provides both dataset references and
+executable example code. Returns 1.0 when both are present, 0.5 for one of
+them, and 0.0 if neither is found.
+"""
+
 from typing import Optional, Tuple
 import time, requests
 from scoring import _hf_model_id_from_url
 from .utils import fetch_hf_readme_text
 
+
 def dataset_and_code_score(model_url: str) -> Tuple[Optional[float], int]:
+    """Return a combined dataset-and-code availability score and latency.
+
+    Heuristics:
+    - Dataset availability is inferred from model card `datasets` metadata.
+    - Code availability is inferred from sibling files (.py) or README snippets
+      that show Python usage examples.
+    """
+
     start_ns = time.time_ns()
     try:
         model_id = _hf_model_id_from_url(model_url)
@@ -23,12 +38,14 @@ def dataset_and_code_score(model_url: str) -> Tuple[Optional[float], int]:
             if isinstance(ds, list) and ds:
                 dataset_available = True
 
+            # Look for sibling files that are Python scripts
             for s in (info.get("siblings") or []):
                 fn = (s.get("rfilename") or "").lower()
                 if fn.endswith(".py"):
                     code_available = True
                     break
 
+        # Fallback: scan README for strong Python usage signals
         if not code_available:
             readme = fetch_hf_readme_text(model_id)
             if readme:

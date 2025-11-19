@@ -1,13 +1,26 @@
-# metrics/ramp_up_time.py
+"""backend.Rate.metrics.ramp_up_time
+
+Estimate how easy it is to get started with a model (ramp-up time proxy).
+
+The heuristic uses presence of a README/card, number of likes, and tags to
+compute a small score indicating ramp-up friendliness.
+"""
+
 from typing import Optional, Tuple
 import time
 import requests, math
 from scoring import _hf_model_id_from_url
 
-def ramp_up_time(model_url: str) -> Tuple[Optional[float], int]:
-    """Return (score, latency_ms)."""
-    start_ns = time.time_ns()
 
+def ramp_up_time(model_url: str) -> Tuple[Optional[float], int]:
+    """Return (score, latency_ms).
+
+    The function fetches model metadata from the HF API and computes a
+    blended score based on readme/card presence, popularity (likes), and
+    whether examples/tutorials are provided via tags.
+    """
+
+    start_ns = time.time_ns()
     try:
         model_id = _hf_model_id_from_url(model_url)
         if model_id.startswith("http"):
@@ -21,14 +34,17 @@ def ramp_up_time(model_url: str) -> Tuple[Optional[float], int]:
         except Exception:
             return None, (time.time_ns() - start_ns) // 1_000_000
 
+        # Popularity -> likes_score (log-scaled)
         likes = int(info.get("likes") or 0)
         likes_score = min(1.0, max(0.0, (math.log10(1 + likes) / 3.0)))
 
+        # Documentation presence: README or model card
         siblings = info.get("siblings") or []
         has_readme = any((s.get("rfilename") or "").lower() == "readme.md" for s in siblings)
         has_card = bool(info.get("cardData"))
         readme_score = 1.0 if (has_readme or has_card) else 0.3
 
+        # Bonus if tags indicate examples/tutorials are present
         tags = [str(t).lower() for t in (info.get("tags") or [])]
         examples_bonus = 0.1 if any(("example" in t or "tutorial" in t) for t in tags) else 0.0
 

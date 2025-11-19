@@ -1,4 +1,16 @@
 # run_metrics.py
+"""backend.Rate.run_metrics
+
+Calculate and aggregate metric scores for a model URL and print results.
+
+Provides:
+- `calculate_net_score(results: dict) -> float`: Compute a weighted net score
+  from individual metric results using the `WEIGHTS` mapping.
+
+When executed as a script this module runs all metrics for a sample model
+URL and prints each metric's score and latency followed by the net score.
+"""
+
 from metric_runner import run_all_metrics
 
 WEIGHTS = {

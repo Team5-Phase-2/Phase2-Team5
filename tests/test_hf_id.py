@@ -1,5 +1,5 @@
 import pytest
-from backend.rate.scoring import _hf_model_id_from_url
+from backend.Rate.scoring import _hf_model_id_from_url
 
 @pytest.mark.parametrize("u,expect", [
     ("https://huggingface.co/google/gemma-3-270m", "google/gemma-3-270m"),

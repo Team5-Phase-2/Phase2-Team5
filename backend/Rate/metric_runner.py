@@ -1,4 +1,10 @@
-# metric_runner.py
+"""backend.Rate.metric_runner
+
+Run registered metrics concurrently for a given model URL, aggregate
+results and invoke the Upload/ingestor lambda. Exposes `run_all_metrics`
+which accepts an event and context and returns an API Gateway-style
+response dict.
+"""
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Dict, Tuple
 from metrics.registry import METRIC_REGISTRY

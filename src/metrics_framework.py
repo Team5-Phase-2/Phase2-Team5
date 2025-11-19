@@ -1,21 +1,38 @@
+"""Metrics calculator and per-metric implementations.
 
-from abc import ABC, abstractmethod
-from dataclasses import dataclass
-from typing import Dict, Optional
-from backend.rate.scoring import _hf_model_id_from_url
-from datetime import datetime
-from src.url.router import ModelItem
-from src.perf_helper import has_real_metrics
-from src.repo_fetch import download_hf_repo_subset, read_text_if_exists
+This module provides a small framework used by the CLI and NDJSON writer
+to compute per-model metrics.  It defines a light-weight `BaseMetric` class
+and a collection of concrete metric implementations (ramp-up, bus-factor,
+license, size, dataset/code signals, code quality, and performance claims).
 
-import time
-import re
-import requests
+The implementations are deliberately defensive — network failures or
+missing repo data yield `None` or conservative default scores rather
+than raising exceptions.
+"""
+
+
+from __future__ import annotations
+
 import math
+import os
+import re
+import sys
+import time
 import tempfile
 import subprocess
-import os
-import sys
+from abc import ABC, abstractmethod
+from dataclasses import dataclass
+from datetime import datetime
+from typing import Dict
+from typing import Optional
+
+import requests
+
+# Local imports (normalized HF helpers)
+from backend.Rate.scoring import _hf_model_id_from_url
+from src.perf_helper import has_real_metrics
+from src.repo_fetch import download_hf_repo_subset
+from src.repo_fetch import read_text_if_exists
 
 #==========HELPER for Performance Metric=============================
 
@@ -37,11 +54,17 @@ def _fetch_hf_readme_text(model_url: str) -> str:
 
 @dataclass
 class MetricResult:
+    """Simple container for a per-metric numeric score and measured latency.
+
+    Attributes:
+        score: Optional[float] — the metric value in 0.0–1.0 or None if unknown.
+        latency_ms: int — latency in milliseconds measured while computing.
+    """
     score: Optional[float]  # optional to allow for None if calculation failed
     latency_ms: int
 
 class BaseMetric(ABC):
-    """Abstract base class for all metrics"""
+    """Abstract base class for all metrics."""
     
     def __init__(self, metric_name: str):
         self.metric_name = metric_name
