@@ -58,8 +58,8 @@ def lambda_handler(event, context):
   return {
     "statusCode": 200,
     "body": json.dumps({
-      id: {
-      "cost_mb": None
+      "id": {
+        "cost_mb": None
       }
     }),
   }
