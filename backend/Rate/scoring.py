@@ -1,3 +1,14 @@
+"""backend.Rate.scoring
+
+Utilities for normalizing Hugging Face model URLs and example scoring helpers.
+
+Provides:
+- `_hf_model_id_from_url(url: str) -> str`: Convert various HF URL forms into a
+  canonical model identifier used by other modules.
+
+The module may contain example/dummy scorer code (disabled) for testing.
+"""
+
 # src/scoring.py
 from __future__ import annotations
 from urllib.parse import urlparse

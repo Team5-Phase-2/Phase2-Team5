@@ -2,7 +2,7 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import Dict, Optional
-from backend.rate.scoring import _hf_model_id_from_url
+from backend.Rate.scoring import _hf_model_id_from_url
 from datetime import datetime
 from src.url.router import ModelItem
 from src.perf_helper import has_real_metrics
