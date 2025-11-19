@@ -81,8 +81,8 @@ def sanitize_request(event):
 
     artifact_type = params.get("artifact_type", "")
     id = params.get("id", "")
-    dependency_str = params.get("dependency", "")
-    dependency = dependency_str.lower() == "true"
+    dependency_str = params.get("dependency", "false")
+    dependency = str(dependency_str).lower() == "true"
 
 
     # Basic validation
