@@ -1,17 +1,22 @@
-# src/url/ndjson_writer.py
+"""Write model metric records as NDJSON using the project's metrics.
+
+This helper wraps the `MetricsCalculator` and emits one JSON line per
+model record in a stable format required by downstream tooling/tests.
+"""
 
 from __future__ import annotations
-import json,os
+
+import json
 import sys
 from typing import TextIO
+
 from src.url.hf_name import hf_model_repo_name
 from src.url.router import ModelItem
-from backend.Rate.scoring import _hf_model_id_from_url
 from src.metrics_framework import MetricsCalculator
-
 from src.metrics_framework import PerformanceClaimsMetric
-
 from src.url.classify import classify
+
+
 REQUIRED_RECORD_TEMPLATE = {
     "name": "",  # model name/url
     "category": "",

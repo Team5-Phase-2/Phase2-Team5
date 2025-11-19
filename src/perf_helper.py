@@ -1,34 +1,47 @@
-import re
-# ----------------- helpers -----------------
+"""Small heuristics to detect whether a README contains real metrics.
 
+The primary use is to detect whether a model README contains evaluation
+results or benchmark tables (accuracy / F1 / BLEU / perplexity, etc.).
+The heuristics are intentionally conservative and tuned for README-like
+content rather than arbitrary pages.
+"""
+
+from __future__ import annotations
+
+import re
+from typing import List
+
+
+# ----------------- helpers -----------------
 _METRIC_WORDS = [
-    "accuracy","acc","f1","f1-score","precision","recall","auc","auroc",
-    "bleu","rouge","meteor","ter","chrf","mse","rmse","mae","r2","perplexity",
-    "wer","cer","map","mrr","ndcg","exact match","em","top-1","top-5",
-    "glue","squad","librispeech","common voice","wmt","imagenet","superglue"
+    "accuracy", "acc", "f1", "f1-score", "precision", "recall", "auc", "auroc",
+    "bleu", "rouge", "meteor", "ter", "chrf", "mse", "rmse", "mae", "r2", "perplexity",
+    "wer", "cer", "map", "mrr", "ndcg", "exact match", "em", "top-1", "top-5",
+    "glue", "squad", "librispeech", "common voice", "wmt", "imagenet", "superglue",
 ]
 
 _PLACEHOLDER_WORDS = [
-    "more information needed","tbd","coming soon","todo","n/a","none"
+    "more information needed", "tbd", "coming soon", "todo", "n/a", "none",
 ]
 
 # numbers like 92, 92.3, 0.923, 92%
 _NUM_RE = re.compile(r"\b\d+(?:\.\d+)?\s*%?\b")
 
 # reject obvious dates/versions (simple filter; we still require metric-word proximity)
-_DATE_VER_RE = re.compile(
-    r"(\b20\d{2}\b|\b\d{4}-\d{2}-\d{2}\b|\bv?\d+(?:\.\d+){1,}\b)"
-)
+_DATE_VER_RE = re.compile(r"(\b20\d{2}\b|\b\d{4}-\d{2}-\d{2}\b|\bv?\d+(?:\.\d+){1,}\b)")
+
 
 def has_real_metrics(text: str) -> bool:
+    """Return True if the text likely contains real evaluation metrics."""
     return _has_real_metrics(text)
+
 
 def _has_real_metrics(text: str) -> bool:
     t = text.lower()
 
     # 1) YAML model-index with numeric value
     if ("model-index" in t and "metrics:" in t and
-        re.search(r"\bvalue\s*:\s*[-+]?\d+(?:\.\d+)?", t)):
+            re.search(r"\bvalue\s*:\s*[-+]?\d+(?:\.\d+)?", t)):
         return True
 
     # 2) Short-circuit if placeholders appear in any evaluation-ish section
@@ -58,7 +71,7 @@ def _has_real_metrics(text: str) -> bool:
         for m in _NUM_RE.finditer(s):
             num_start = m.start()
             # ignore obvious dates/versions near the number (heuristic)
-            if _DATE_VER_RE.search(s[max(0, num_start-10):num_start+10]):
+            if _DATE_VER_RE.search(s[max(0, num_start - 10):num_start + 10]):
                 continue
 
             left = max(0, num_start - WINDOW)
@@ -75,13 +88,10 @@ def _has_real_metrics(text: str) -> bool:
     return False
 
 
-def _extract_eval_like_sections(t: str) -> list[str]:
-    """
-    Split by markdown headings and return bodies for headings that look like
-    evaluation/results/benchmark/performance.
-    """
+def _extract_eval_like_sections(t: str) -> List[str]:
+    """Split by markdown headings and return bodies for evaluation-like headings."""
     parts = re.split(r"\n(?=#{1,6}\s)", t)  # split on headings
-    out = []
+    out: List[str] = []
     for part in parts:
         # grab heading line
         first_line = part.splitlines()[0] if part else ""
@@ -91,10 +101,7 @@ def _extract_eval_like_sections(t: str) -> list[str]:
 
 
 def _looks_like_metric_table(s: str) -> bool:
-    """
-    Heuristic: a markdown table with a header row containing metric-ish words
-    and at least one numeric cell in subsequent rows.
-    """
+    """Heuristic: detect a markdown table with metric header and numeric cells."""
     # Find markdown tables
     tables = re.findall(r"(?:\n\|.*\|\n\|[-:\s|]+\|\n(?:\|.*\|\n)+)", s)
     for tbl in tables:

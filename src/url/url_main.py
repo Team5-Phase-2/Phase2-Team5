@@ -74,13 +74,14 @@ if __name__ == "__main__":
     sys.exit(run_url_file(sys.argv[1]))
 """
 from __future__ import annotations
-import os, re
-import sys,json
+import os
+import re
+import sys
+import json
 import logging
-from typing import Iterator, Iterable
 
-from src.url.router import UrlRouter
-from src.url.ndjson_writer import NdjsonWriter, REQUIRED_RECORD_TEMPLATE
+from src.url.ndjson_writer import NdjsonWriter
+from src.url.ndjson_writer import REQUIRED_RECORD_TEMPLATE
 from backend.Rate.scoring import _hf_model_id_from_url
 
 
@@ -205,79 +206,6 @@ def _process_urls(urls, logger):
 
     logger.info("Processed URLs with %d per-url errors", err_count)
     return err_count
-
-
-'''
-def _process_urls(urls: Iterable[str], logger: logging.Logger) -> int:
-    """
-    Route each URL, write NDJSON to stdout, send all errors to stderr.
-    Returns the count of per-URL errors (does NOT fail the whole run).
-    """
-    router = UrlRouter()
-    writer = NdjsonWriter()
-    err_count = 0
-
-    for url in urls:
-        try:
-            # Router may yield 0..N records per URL
-            for item in router.route(iter([url])):
-                try:
-                    writer.write(item)  # pure NDJSON to stdout
-                except Exception as e:
-                    err_count += 1
-                    print(f"writer error for {url}: {e}", file=sys.stderr)
-
-                    #let's see if it works
-                    rec = {
-                        "name": "bert-base-uncased",
-                        "category": "MODEL",
-                        "net_score": 0.123, "net_score_latency": 1,
-                        "ramp_up_time": 0.1, "ramp_up_time_latency": 1,
-                        "bus_factor": 0.2, "bus_factor_latency": 1,
-                        "performance_claims": 0.0, "performance_claims_latency": 1,
-                        "license": 0.0, "license_latency": 1,
-                        "size_score": {
-                            "raspberry_pi": 0.0, "jetson_nano": 0.0,
-                            "desktop_pc": 0.0, "aws_server": 0.0,
-                        },
-                        "size_score_latency": 1,
-                        "dataset_and_code_score": 0.0, "dataset_and_code_score_latency": 1,
-                        "dataset_quality": 0.0, "dataset_quality_latency": 1,
-                        "code_quality": 0.0, "code_quality_latency": 1,
-                    }
-                    sys.stdout.write(json.dumps(rec) + "\n")
-                    sys.stdout.flush()
-
-
-        except Exception as e:
-            err_count += 1
-            print(f"route error for {url}: {e}", file=sys.stderr)
-
-            #let's see if it hits this
-            rec = {
-                "name": "bert-base-uncased",
-                "category": "MODEL",
-                "net_score": 0.123, "net_score_latency": 1,
-                "ramp_up_time": 0.1, "ramp_up_time_latency": 1,
-                "bus_factor": 0.2, "bus_factor_latency": 1,
-                "performance_claims": 0.0, "performance_claims_latency": 1,
-                "license": 0.0, "license_latency": 1,
-                "size_score": {
-                    "raspberry_pi": 0.0, "jetson_nano": 0.0,
-                    "desktop_pc": 0.0, "aws_server": 0.0,
-                },
-                "size_score_latency": 1,
-                "dataset_and_code_score": 0.0, "dataset_and_code_score_latency": 1,
-                "dataset_quality": 0.0, "dataset_quality_latency": 1,
-                "code_quality": 0.0, "code_quality_latency": 1,
-            }
-            sys.stdout.write(json.dumps(rec) + "\n")
-            sys.stdout.flush()
-
-    logger.info("Processed URLs with %d per-url errors", err_count)
-    return err_count
-
-'''
 
 def run_url_file(url_file: str) -> int:
     """
