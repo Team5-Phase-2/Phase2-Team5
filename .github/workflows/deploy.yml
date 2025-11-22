@@ -9,6 +9,15 @@ on:
 
 jobs:
   ## LAMBDA FUNCTION DEPLOYMENT ##
+  deploy-artifacts:
+    uses: ./.github/workflows/aws_lambda_deploy.yml
+    with:
+      lambda-dir: Artifacts
+      path: ./backend
+    secrets:
+      LAMBDA_AWS_ACCESS_KEY: ${{ secrets.LAMBDA_AWS_ACCESS_KEY }}
+      LAMBDA_AWS_SECRET_ACCESS_KEY: ${{ secrets.LAMBDA_AWS_SECRET_ACCESS_KEY }}
+  
   deploy-rate:
     uses: ./.github/workflows/aws_lambda_deploy.yml
     with:
@@ -32,6 +41,24 @@ jobs:
     uses: ./.github/workflows/aws_lambda_deploy.yml
     with:
       lambda-dir: Health
+      path: ./backend
+    secrets:
+      LAMBDA_AWS_ACCESS_KEY: ${{ secrets.LAMBDA_AWS_ACCESS_KEY }}
+      LAMBDA_AWS_SECRET_ACCESS_KEY: ${{ secrets.LAMBDA_AWS_SECRET_ACCESS_KEY }}
+
+  deploy-track:
+    uses: ./.github/workflows/aws_lambda_deploy.yml
+    with:
+      lambda-dir: Track
+      path: ./backend
+    secrets:
+      LAMBDA_AWS_ACCESS_KEY: ${{ secrets.LAMBDA_AWS_ACCESS_KEY }}
+      LAMBDA_AWS_SECRET_ACCESS_KEY: ${{ secrets.LAMBDA_AWS_SECRET_ACCESS_KEY }}
+
+  deploy-reset:
+    uses: ./.github/workflows/aws_lambda_deploy.yml
+    with:
+      lambda-dir: Reset
       path: ./backend
     secrets:
       LAMBDA_AWS_ACCESS_KEY: ${{ secrets.LAMBDA_AWS_ACCESS_KEY }}

@@ -12,3 +12,7 @@ huggingface_hub
 
 pylint
 requests
+
+boto3
+moto
+

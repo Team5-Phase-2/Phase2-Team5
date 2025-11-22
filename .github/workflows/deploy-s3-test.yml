@@ -1,7 +1,10 @@
-name: Manual Dummy Deploy to AWS Lambda
+name: Deployment of Static Frontend to S3
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      main
 
 jobs:
   deploy:
