@@ -5,5 +5,6 @@ def lambda_handler(event, context):
 
   return {
     "statusCode": 200,
-    "body": json.dumps({"plannedTracks": "High-assurance track"})
+    "body": json.dumps({"planned_tracks": "High-assurance track"})
   }
+
