@@ -3,123 +3,166 @@ import re
 import time
 import os
 import requests
-from typing import Optional, Tuple
+from typing import Tuple
 
 
 def reviewedness(model_url: str) -> Tuple[float, int]:
     """
-    Estimate how much of the code in a linked GitHub repository
-    was introduced through reviewed pull requests.
-    If no GitHub repository can be found, return 0.
+    Computes the reviewedness metric for a models GitHub repository, as required
+    by the Phase 2 specification.
+
+    The function:
+      1. Identifies the GitHub repo from either a direct URL or a HuggingFace page.
+      2. Fetches up to 30 recent closed pull requests.
+      3. Determines which PRs received code reviews.
+      4. Counts added lines across reviewed vs. unreviewed PRs.
+      5. Returns the ratio of reviewed additions to total additions.
+
+    Args:
+        model_url (str): GitHub or HuggingFace model URL.
+
+    Returns:
+        Tuple[float, int]:
+            - reviewedness score (0-1, or -1 if no repo found)
+            - total latency in milliseconds
     """
+
+    #print("\n>>")
+    #print("[DEBUG] Checking URL:", model_url)
+
+    #Start timer
     start_time = time.time_ns()
 
-    #Read GitHub token from environment (NEEDS TO BE SET CONFIRM THIS)
+    #Set up GitHub API headers
     token = os.getenv("GITHUB_TOKEN")
     headers = {"Accept": "application/vnd.github+json"}
     if token:
         headers["Authorization"] = f"token {token}"
 
-    try:
-        #Try to locate a GitHub repository URL
-        match = re.search(r"github\.com/([^/\s]+)/([^/\s/]+?)(?:\.git|/|$)", model_url)
-
-        '''
-        print(f"[DEBUG] Model URL: {model_url}")
+    #Extract GitHub repo from URL
+    def extract_github_repo(text: str):
+        match = re.search(r"github\.com/([A-Za-z0-9_.-]+)/([A-Za-z0-9_.-]+)", text)
         if match:
-            print(f"[DEBUG] Found GitHub repo: {match.group(1)}/{match.group(2)}")
-        else:
-            print("[DEBUG] No GitHub repo found directly in URL. Trying to scrape page...")
-        '''
-        
-        #if the model url passed in is not github then search page for a url (ASK BETTER WAY TO DO THIS WITH HUGGING FACE)
-        if not match:
-            try:
-                #this loads the webpage and searches for the github url string 
-                r = requests.get(model_url, timeout=10)
-                if r.status_code == 200:
-                    match = re.search(r"github\.com/([^/\s]+)/([^/\s/]+)", r.text)
-            except Exception:
-                pass
+            #print("[DEBUG] Extracted GitHub repo from text:", match.group(0))
+            return match.group(1), match.group(2)
+        return None
 
-        #IF no github found then return 0 
-        if not match:
-            latency_ms = (time.time_ns() - start_time) // 1_000_000
-            print("here3")
-            return 0, latency_ms
+    # Find GitHub repo from HuggingFace HTML
+    def find_github_repo_from_hf_html(model_url: str):
+        #print("[DEBUG] Fetching HF HTML:", model_url)
 
-        owner, repo = match.group(1), match.group(2)
-        base_api = f"https://api.github.com/repos/{owner}/{repo}"
+        #Get Model Card from HuggingFace
+        try:
+            resp = requests.get(model_url, timeout=10)
+            html = resp.text
+            #print("[DEBUG] HF HTML status:", resp.status_code)
+        except Exception as e:
+            #print("[DEBUG] HF HTML failed:", e)
+            return None
 
-        #Retrieve pull requests from github (return 0 if cant) (only looking at 30 most recent right now)
-        prs_url = f"{base_api}/pulls?state=closed&per_page=30"
-        prs_response = requests.get(prs_url, headers=headers, timeout=10)
-        if prs_response.status_code != 200:
-            latency_ms = (time.time_ns() - start_time) // 1_000_000
-            #print("here4")
-            #print(f"[DEBUG] Failed to get PRs ({prs_url}) → status: {prs_response.status_code}")
-            #print("[DEBUG] Response text:", prs_response.text[:300])
-            return 0, latency_ms
+        #GitHub repo links
+        patterns = [
+            r'https?://github\.com/([A-Za-z0-9_.-]+)/([A-Za-z0-9_.-]+)',
+            r'github\.com/([A-Za-z0-9_.-]+)/([A-Za-z0-9_.-]+)',
+            r'href="https://github\.com/([A-Za-z0-9_.-]+)/([A-Za-z0-9_.-]+)'
+        ]
 
-        prs = prs_response.json()
-        if not isinstance(prs, list) or len(prs) == 0:
-            latency_ms = (time.time_ns() - start_time) // 1_000_000
-            #print("here5")
-            return 0, latency_ms
+        #Look for GitHub repo links
+        for p in patterns:
+            match = re.search(p, html)
+            if match:
+                #print("[DEBUG] Found GitHub via pattern:", match.group(0))
+                return match.group(1), match.group(2)
 
-        total_added = 0
-        reviewed_added = 0
+        #print("[DEBUG] No GitHub link found in HF HTML.")
+        return None
 
-        #print("here1")
-        #Loop through each pull request and check 
-        for pr in prs:
-            #print("here2")
-            
-            #skip unmerged pull requests 
-            if not pr.get("merged_at"):
-                continue 
+    #First Check URL is github link
+    owner_repo = extract_github_repo(model_url)
 
-            pr_number = pr["number"]
+    #Second Check huggingface
+    if not owner_repo and "huggingface.co" in model_url:
+        owner_repo = find_github_repo_from_hf_html(model_url)
 
-            #Get reviers and comments from pull request
-            pr_info = requests.get(f"{base_api}/pulls/{pr_number}", headers=headers, timeout=10)
-            if pr_info.status_code != 200:
-                continue
-            pr_data = pr_info.json()
-
-            #check if has at least one review comment or one requested reviewer 
-            reviewed = bool(pr_data.get("review_comments", 0)) or bool(pr_data.get("requested_reviewers"))
-
-            #get the files that were changed in pull request 
-            files_url = f"{base_api}/pulls/{pr_number}/files"
-            files_response = requests.get(files_url, headers=headers, timeout=10)
-            if files_response.status_code != 200:
-                continue
-            files = files_response.json()
-
-            #count added lines 
-            for f in files:
-                filename = f.get("filename", "").lower()
-
-                #skip large binary files or anything wierd like model weights 
-                if filename.endswith((".bin", ".safetensors", ".ckpt", ".pt", ".pth")):
-                    continue  
-
-                additions = f.get("additions", 0)
-                total_added += additions
-                if reviewed:
-                    reviewed_added += additions
-
-        #If there were no code additions at all return 0 
-        if total_added == 0:
-            latency_ms = (time.time_ns() - start_time) // 1_000_000
-            return 0, latency_ms
-
-        #calculate final score rounded to 3 decimal places (Ratio of lines reviewed over total lines)
-        score = round(reviewed_added / total_added, 3)
+   #If link is not found, return -1
+    if not owner_repo:
+        #print("[DEBUG] No GitHub repo found → returning -1")
         latency_ms = (time.time_ns() - start_time) // 1_000_000
-        return score, latency_ms
+        return -1, latency_ms
 
-    except Exception:
+    #print("[DEBUG] Final extracted repo:", owner_repo)
+
+    owner, repo = owner_repo
+    base_api = f"https://api.github.com/repos/{owner}/{repo}"
+
+    #Set up check for pull requests
+    MAX_PRS = 30
+    prs_url = (
+        f"{base_api}/pulls?state=closed&per_page={MAX_PRS}&sort=updated&direction=desc"
+    )
+    #print("[DEBUG] Fetching PR list:", prs_url)
+
+    #Check pull requests
+    prs_resp = requests.get(prs_url, headers=headers, timeout=10)
+    if prs_resp.status_code != 200:
+        #print("[DEBUG] Failed to fetch PRs:", prs_resp.status_code)
+        #if failed to get PRs return -1
+        latency_ms = (time.time_ns() - start_time) // 1_000_000
+        return -1, latency_ms
+
+    prs = prs_resp.json()
+    #print("[DEBUG] PR count:", len(prs))
+
+    #if not closed PRs return -1
+    if not prs:
+        print("[DEBUG] Zero PRs found.")
+        latency_ms = (time.time_ns() - start_time) // 1_000_000
+        return -1, latency_ms
+
+    #tracker variables
+    total_added = 0
+    reviewed_added = 0
+    binary_exts = (".bin", ".safetensors", ".ckpt", ".pt", ".pth", ".onnx")
+
+    #check each PR to see if reviewed
+    for pr in prs:
+        if not pr.get("merged_at"):
+            continue
+
+        pr_number = pr["number"]
+
+        #get reviews
+        reviews_url = f"{base_api}/pulls/{pr_number}/reviews"
+        rev_resp = requests.get(reviews_url, headers=headers, timeout=10)
+        reviews = rev_resp.json() if rev_resp.status_code == 200 else []
+        reviewed = len(reviews) > 0
+
+        #get file changes
+        files_url = f"{base_api}/pulls/{pr_number}/files"
+        files_resp = requests.get(files_url, headers=headers, timeout=10)
+        files = files_resp.json() if files_resp.status_code == 200 else []
+
+        #for each file check if reviewed
+        for f in files:
+            fname = f.get("filename", "").lower()
+            additions = f.get("additions", 0)
+
+            #skip binary files
+            if fname.endswith(binary_exts):
+                continue
+
+            total_added += additions
+            if reviewed:
+                reviewed_added += additions
+
+    #compute score
+    if total_added == 0:
+        #print("[DEBUG] No code additions found.")
         latency_ms = (time.time_ns() - start_time) // 1_000_000
         return 0, latency_ms
+
+    score = round(reviewed_added / total_added, 3)
+    #print("[DEBUG] FINAL SCORE:", score)
+
+    latency_ms = (time.time_ns() - start_time) // 1_000_000
+    return score, latency_ms
