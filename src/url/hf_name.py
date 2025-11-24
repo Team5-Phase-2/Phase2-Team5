@@ -1,15 +1,22 @@
-# src/url/hf_name.py
-from urllib.parse import urlparse, unquote
+"""Helpers to extract Hugging Face model repo names.
+
+The public helper `hf_model_repo_name` returns the repository's final
+segment (the model name) for a variety of HF URL forms or plain
+owner/name strings.
+"""
+
+from __future__ import annotations
+
+from urllib.parse import urlparse
+from urllib.parse import unquote
+
 
 def hf_model_repo_name(u: str) -> str:
-    """
-    Return just the repo name (last model segment) for HF model links or org/name strings.
+    """Return the repo name (final model segment) from `u`.
+
     Examples:
-      https://huggingface.co/google-bert/bert-base-uncased        -> bert-base-uncased
-      https://huggingface.co/google-bert/bert-base-uncased/       -> bert-base-uncased
-      https://huggingface.co/google-bert/bert-base-uncased/tree/main -> bert-base-uncased
-      google-bert/bert-base-uncased                               -> bert-base-uncased
-      bert-base-uncased                                           -> bert-base-uncased
+      - https://huggingface.co/google/bert-base-uncased -> bert-base-uncased
+      - google/bert-base-uncased -> bert-base-uncased
     """
     s = u.strip()
     # handle plain "org/name" or "name"
@@ -25,8 +32,8 @@ def hf_model_repo_name(u: str) -> str:
     if parts[0] in {"models", "spaces", "datasets", "docs", "organizations", "tasks"} and len(parts) >= 2:
         name = parts[1]
     elif len(parts) >= 2:
-        name = parts[1]          # /org/name[/...]
+        name = parts[1]
     else:
-        name = parts[0]          # /name
+        name = parts[0]
     name = unquote(name)
     return name[:-4] if name.endswith(".git") else name

@@ -1,3 +1,17 @@
+"""backend.Rate.repo_fetch
+
+Utilities to fetch a small subset of files from a Hugging Face repository's
+raw endpoints. Useful for heuristics that inspect README, license, or
+configuration files without using the HF API.
+
+Provides:
+- `download_hf_repo_subset(model_url: str, candidates: list[str] | None) -> Path`:
+    Download common candidate files (README, LICENSE, etc.) into a temporary
+    directory and return its path.
+- `read_text_if_exists(dirpath: Path, name: str) -> str`: Safely read a text
+    file from a directory if present, returning an empty string on error.
+"""
+
 # src/repo_fetch.py
 from __future__ import annotations
 from pathlib import Path
@@ -44,10 +58,21 @@ def download_hf_repo_subset(model_url: str, candidates: list[str] | None = None)
     return tmp
 
 def read_text_if_exists(dirpath: Path, name: str) -> str:
+    """Read a text file from `dirpath` if it exists, else return empty string.
+
+    Args:
+        dirpath (Path): Directory where file was downloaded.
+        name (str): Filename to read.
+
+    Returns:
+        str: File contents or an empty string on error/not found.
+    """
+
     p = dirpath / name
     if p.exists():
         try:
             return p.read_text(encoding="utf-8", errors="ignore")
         except Exception:
+            # Read errors gracefully degrade to empty string
             return ""
     return ""
