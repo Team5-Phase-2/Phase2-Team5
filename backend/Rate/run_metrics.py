@@ -1,3 +1,4 @@
+
 # run_metrics.py
 """backend.Rate.run_metrics
 
@@ -35,12 +36,3 @@ def calculate_net_score(results: dict) -> float:
                 net_score += score * w
                 total_weight += w
     return round(net_score / total_weight, 3) if total_weight > 0 else 0.0
-
-
-if __name__ == "__main__":
-    
-    model_url = "https://huggingface.co/parvk11/audience_classifier_model"
-    results = run_all_metrics(model_url)
-    for k, (score, latency) in results.items():
-        print(f"{k:25s} -> score: {str(score):6s}   latency_ms: {latency}")
-    print("\nNet score:", calculate_net_score(results))
