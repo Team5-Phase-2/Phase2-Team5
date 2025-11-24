@@ -1,11 +1,23 @@
-# metrics/bus_factor.py
+"""backend.Rate.metrics.bus_factor
+
+Estimate the bus factor for a model repository. Bus factor here is a
+combination of popularity (downloads) and freshness (recent updates).
+"""
+
 from typing import Optional, Tuple
 import time
 import requests, math
 from datetime import datetime
 from scoring import _hf_model_id_from_url
 
+
 def bus_factor(model_url: str) -> Tuple[Optional[float], int]:
+    """Return (score, latency_ms) representing project resilience.
+
+    A higher score indicates more widespread use and recent maintenance,
+    suggesting lower risk from a single-point-of-failure contributor.
+    """
+
     start_ns = time.time_ns()
     try:
         model_id = _hf_model_id_from_url(model_url)
@@ -20,6 +32,7 @@ def bus_factor(model_url: str) -> Tuple[Optional[float], int]:
         except Exception:
             return 0.0, (time.time_ns() - start_ns) // 1_000_000
 
+        # Normalize downloads via log-scale
         downloads = 0
         try:
             downloads = int(info.get("downloads") or 0)
@@ -27,6 +40,7 @@ def bus_factor(model_url: str) -> Tuple[Optional[float], int]:
             downloads = 0
         downloads_norm = min(1.0, math.log10(1 + downloads) / 6.0)
 
+        # Freshness measured from lastModified timestamp
         last_mod = info.get("lastModified")
         age_days = 365.0
         if isinstance(last_mod, str):
