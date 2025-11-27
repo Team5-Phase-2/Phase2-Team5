@@ -2,7 +2,7 @@
  * app.js - Conceptual Logic for Fan-Out Data Loading
  */
 
-const API_BASE_URL = 'http://your-backend-api.com/artifact'; // REPLACE WITH YOUR ACTUAL BACKEND URL
+const API_BASE_URL = 'https://moy7eewxxe.execute-api.us-east-2.amazonaws.com/main';
 
 // --- 1. Helper Function to Fetch All Details ---
 async function fetchModelDetails(id) {
@@ -60,42 +60,55 @@ function createModelCard(model, details) {
 }
 
 // --- 3. Main Initialization Function ---
+
+// Function to fetch the initial list of all artifacts
 async function init() {
     const modelsGrid = document.getElementById('modelsGrid');
     
-    // Start with a clean slate
+    // Initial loading state
     modelsGrid.innerHTML = '<div class="model-card placeholder">Fetching core artifact list...</div>';
 
     try {
-        // Step 1: Fetch the initial list of all artifacts
-        const response = await fetch(`${API_BASE_URL}s`); // Assumed /artifacts endpoint
+        // Construct the full URL for the /artifacts endpoint
+        const fullUrl = `${API_BASE_URL}/artifacts`; 
+        console.log(`Fetching from: ${fullUrl}`);
+
+        const response = await fetch(fullUrl);
+        
+        // --- Essential HTTP Status Check ---
+        if (!response.ok) {
+            // Throw an error if the HTTP status is 4xx or 5xx
+            throw new Error(`API Request Failed: ${response.status} ${response.statusText}`);
+        }
+
         const artifacts = await response.json();
         
-        // Clear the loading placeholder
-        modelsGrid.innerHTML = ''; 
-
-        // Step 2: Render initial cards and trigger the fan-out
-        artifacts.forEach(async (model) => {
-            // Create a basic card placeholder immediately
-            const loadingCard = document.createElement('div');
-            loadingCard.className = 'model-card';
-            loadingCard.innerHTML = `
-                <div class="card-header"><h3 class="model-name">${model.name}</h3></div>
-                <div class="card-details">Loading details...</div>
-            `;
-            modelsGrid.appendChild(loadingCard);
-
-            // Fetch the details asynchronously (Fan-Out)
-            const details = await fetchModelDetails(model.id);
-
-            // Once details are back, replace the loading card with the final card
-            const finalCard = createModelCard(model, details);
-            modelsGrid.replaceChild(finalCard, loadingCard);
-        });
+        // --- Rendering Logic ---
+        modelsGrid.innerHTML = ''; // Clear loading message
+        
+        if (artifacts.length === 0) {
+            modelsGrid.innerHTML = '<div class="model-card placeholder">No artifacts found in the registry.</div>';
+        } else {
+            // Step 2: Render initial cards and trigger the fan-out for details
+            artifacts.forEach(async (model) => {
+                // ... (Model card creation and detail fan-out logic from Step 3 goes here) ...
+                // For demonstration:
+                const card = document.createElement('div');
+                card.className = 'model-card';
+                card.innerHTML = `<h3>${model.name}</h3><p>ID: ${model.id}</p><p>Loading details...</p>`;
+                modelsGrid.appendChild(card);
+                
+                // --- Start the Fan-Out calls ---
+                const details = await fetchModelDetails(model.id);
+                // Replace the loading card with the fully detailed card
+                card.innerHTML = `<h3>${model.name}</h3><p>Rating: ${details.rating}</p>`;
+            });
+        }
 
     } catch (error) {
-        modelsGrid.innerHTML = '<div class="model-card placeholder" style="background-color: var(--danger-color); color: white;">Error loading models. Check API connection.</div>';
-        console.error("Failed to load artifacts:", error);
+        // Display the error in the UI if the fetch itself or the JSON parsing failed
+        modelsGrid.innerHTML = `<div class="model-card placeholder" style="background-color: var(--danger-color); color: white;">Error: ${error.message}. Check your API_BASE_URL.</div>`;
+        console.error("Initialization failed:", error);
     }
 }
 
