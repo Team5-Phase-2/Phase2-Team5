@@ -46,6 +46,7 @@ def lambda_handler(event, context):
     # Initialize S3 client (uses execution role / environment credentials).
     s3 = boto3.client("s3")
 
+
     # Parse and validate JSON body from API Gateway event.
     body = event
     
