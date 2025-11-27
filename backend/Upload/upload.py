@@ -48,17 +48,8 @@ def lambda_handler(event, context):
 
 
     # Parse and validate JSON body from API Gateway event.
-    try:
-        body = json.loads(event.get("body", "{}"))
-    except json.JSONDecodeError:
-        return {
-            "statusCode": 400,
-            "body": json.dumps({"error": "Invalid JSON body"})
-        }
-
-    #Confirm JSON body exists
     body = event
-
+    
     # Required fields expected from the upstream scorer/ingestor
     artifact_type = body.get("artifact_type")
     model_url = body.get("model_url")
