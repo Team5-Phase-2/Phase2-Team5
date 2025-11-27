@@ -47,14 +47,8 @@ def lambda_handler(event, context):
     s3 = boto3.client("s3")
 
     # Parse and validate JSON body from API Gateway event.
-    try:
-        body = json.loads(event.get("body", "{}"))
-    except json.JSONDecodeError:
-        return {
-            "statusCode": 400,
-            "body": json.dumps({"error": "Invalid JSON body"})
-        }
-
+    body = event
+    
     # Required fields expected from the upstream scorer/ingestor
     artifact_type = body.get("artifact_type")
     model_url = body.get("model_url")
