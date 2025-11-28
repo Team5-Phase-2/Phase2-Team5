@@ -15,7 +15,7 @@ async function fetchModelDetails(id) {
 
         return {
             rating: ratingResponse, // e.g., 4.5
-            cost: costResponse,     // e.g., 0 or 1.99
+            cost: costResponse,      // e.g., 0 or 1.99
             isLicensed: licenseResponse // e.g., true/false
         };
     } catch (error) {
@@ -41,7 +41,7 @@ function createModelCard(model, details) {
     // HTML structure for the card
     card.innerHTML = `
         <div class="card-header">
-            <h3 class="model-name">${model.name}</h3>
+            <h3 class="model-name truncated-name">${model.name}</h3>
             <span class="model-type-tag">${model.type || 'Model'}</span>
         </div>
         <p class="model-desc">${model.description || 'A concise description of the model.'}</p>
