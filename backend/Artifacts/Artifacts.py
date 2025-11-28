@@ -13,6 +13,18 @@ def lambda_handler(event, context):
 
   Pagination is controlled by an "offset" header.
   """
+  if event.get('httpMethod') == 'OPTIONS':
+        # Ensure these headers are correct based on your previous debugging
+        return {
+            'statusCode': 200,
+            'headers': {
+                'Access-Control-Allow-Origin': 'https://dkc81a64i5ewt.cloudfront.net',
+                'Access-Control-Allow-Methods': 'POST,OPTIONS', 
+                'Access-Control-Allow-Headers': 'Content-Type,Authorization,offset', 
+                'Content-Type': 'application/json'
+            },
+            'body': '' 
+        }
   s3_bucket = os.environ.get("REGISTRY_BUCKET")
   if not s3_bucket:
     print("lambda_handler: REGISTRY_BUCKET not configured")
