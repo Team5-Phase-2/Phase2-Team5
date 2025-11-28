@@ -5,6 +5,16 @@
 const API_BASE_URL = 'https://moy7eewxxe.execute-api.us-east-2.amazonaws.com/main';
 
 // --- 1. Helper Function to Fetch All Details ---
+function escapeHtml(str) {
+    if (str === null || str === undefined) return '';
+    return String(str)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+}
+
 async function fetchModelDetails(id) {
     try {
         const [ratingResponse, costResponse, licenseResponse] = await Promise.all([
@@ -25,34 +35,33 @@ async function fetchModelDetails(id) {
 }
 
 // --- 2. Function to Render a Model Card ---
-function createModelCard(model, details) {
+function createModelCard(model, details = { rating: 'N/A', cost: 0, isLicensed: false }) {
     const card = document.createElement('div');
     card.className = 'model-card';
+    card.dataset.modelId = model.id || '';
 
-    // Determine visual status based on fetched details
+    const typeKey = (model.type || 'model').toLowerCase();
+    const iconMap = { model: 'fa-robot', dataset: 'fa-database', source: 'fa-code-branch' };
+    const typeIcon = iconMap[typeKey] || 'fa-box';
+
     const isVetted = details.isLicensed === true;
-    const vettedBadge = isVetted 
+    const vettedBadge = isVetted
         ? `<span class="badge badge-vetted"><i class="fas fa-shield-alt"></i> VETTED</span>`
         : `<span class="badge badge-risk"><i class="fas fa-exclamation-triangle"></i> RISK</span>`;
 
-    const costDisplay = details.cost > 0 ? `$${details.cost.toFixed(2)}` : 'FREE';
-    const ratingStars = '⭐'.repeat(Math.round(details.rating)) || 'N/A';
-    
-    // HTML structure for the card
+    const costDisplay = (typeof details.cost === 'number' && details.cost > 0) ? `$${details.cost.toFixed(2)}` : 'FREE';
+    const ratingNum = (typeof details.rating === 'number') ? Math.round(details.rating) : null;
+    const ratingStars = ratingNum ? '⭐'.repeat(Math.max(1, Math.min(5, ratingNum))) : 'N/A';
+
     card.innerHTML = `
         <div class="card-header">
-            <h3 class="model-name truncated-name">${model.name}</h3>
-            <span class="model-type-tag">${model.type || 'Model'}</span>
+            <h3 class="model-name truncated-name" title="${escapeHtml(model.name || '')}">${escapeHtml(model.name || 'Untitled')}</h3>
+            <code class="model-id">ID:${escapeHtml(model.id || '')}</code>
+            <span class="type-badge type-${escapeHtml(typeKey)}">${escapeHtml(typeKey).toUpperCase()}</span>
         </div>
-        <p class="model-desc">${model.description || 'A concise description of the model.'}</p>
-        <div class="card-details">
-            <div>
-                ${ratingStars}
-            </div>
-            <div>
-                <span class="cost-display">${costDisplay}</span>
-                ${vettedBadge}
-            </div>
+
+        <div class="card-actions">
+            <button class="btn btn-ghost btn-details" data-id="${escapeHtml(model.id || '')}">Details</button>
         </div>
     `;
 
@@ -95,19 +104,25 @@ const artifacts = await response.json();
             modelsGrid.innerHTML = '<div class="model-card placeholder">No artifacts found in the registry.</div>';
         } else {
             // Step 2: Render initial cards and trigger the fan-out for details
-            artifacts.forEach(async (model) => {
-                // ... (Model card creation and detail fan-out logic from Step 3 goes here) ...
-                // For demonstration:
-                const card = document.createElement('div');
-                card.className = 'model-card';
-                card.innerHTML = `<h3>${model.name}</h3><p>ID: ${model.id}</p><p>Loading details...</p>`;
-                modelsGrid.appendChild(card);
-                
-                // --- Start the Fan-Out calls ---
-                const details = await fetchModelDetails(model.id);
-                // Replace the loading card with the fully detailed card
-                card.innerHTML = `<h3>${model.name}</h3><p>Rating: ${details.rating}</p>`;
+            artifacts.forEach((model) => {
+            // create a lightweight placeholder card (fast)
+            const placeholderDetails = { rating: 0, cost: 0, isLicensed: false };
+            const placeholderCard = createModelCard(model, placeholderDetails);
+            placeholderCard.classList.add('loading');
+            modelsGrid.appendChild(placeholderCard);
+
+            // fan-out to fetch details and replace the card when done
+            fetchModelDetails(model.id).then((details) => {
+                const fullCard = createModelCard(model, details);
+                modelsGrid.replaceChild(fullCard, placeholderCard);
+            }).catch((err) => {
+                // keep placeholder but show error text
+                placeholderCard.classList.remove('loading');
+                const desc = placeholderCard.querySelector('.model-desc');
+                if (desc) desc.textContent = 'Failed to load details';
+                console.error(`Details error for ${model.id}:`, err);
             });
+        });
         }
 
     } catch (error) {
@@ -128,3 +143,24 @@ document.getElementById('searchButton').addEventListener('click', () => {
 
 // Initialize the homepage on load
 document.addEventListener('DOMContentLoaded', init);
+
+
+document.getElementById('modelsGrid').addEventListener('click', (ev) => {
+    const copyBtn = ev.target.closest('.btn-copy');
+    if (copyBtn) {
+        const id = copyBtn.dataset.id;
+        navigator.clipboard?.writeText(id).then(() => {
+            const old = copyBtn.textContent;
+            copyBtn.textContent = 'Copied';
+            setTimeout(() => copyBtn.textContent = old, 1200);
+        }).catch(() => alert(`ID: ${id}`));
+        return;
+    }
+    const detailsBtn = ev.target.closest('.btn-details');
+    if (detailsBtn) {
+        const id = detailsBtn.dataset.id;
+        console.log('Open details for', id);
+        // placeholder: wire to a modal/route as needed
+        alert(`Open details for ${id}`);
+    }
+});
