@@ -80,7 +80,7 @@ def lambda_handler(event, context):
         "results": results,
         "net_score": net_score,
         "name": name,
-        "model_id": model_id
+        "id": model_id
     }
 
     metadata = {"name": name, "id": model_id, "type": artifact_type}
