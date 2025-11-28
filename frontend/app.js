@@ -75,11 +75,6 @@ async function init() {
         const response = await fetch(fullUrl, {
             method: 'POST', 
             
-            headers: {
-                'Content-Type': 'application/json', 
-                // Include any required auth headers here if necessary
-            },
-            
             body: JSON.stringify([{ 
                 'name': '*', 
                 'types': [] 
