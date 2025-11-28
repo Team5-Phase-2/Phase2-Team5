@@ -71,17 +71,27 @@ async function init() {
     try {
         // Construct the full URL for the /artifacts endpoint
         const fullUrl = `${API_BASE_URL}/artifacts`; 
-        console.log(`Fetching from: ${fullUrl}`);
 
-        const response = await fetch(fullUrl);
+        const response = await fetch(fullUrl, {
+            method: 'POST', 
+            
+            headers: {
+                'Content-Type': 'application/json', 
+                // Include any required auth headers here if necessary
+            },
+            
+            body: JSON.stringify([{ 
+                'name': '*', 
+                'types': [] 
+            }]),
+        });
         
-        // --- Essential HTTP Status Check ---
+        // --- Essential HTTP Status Check (remains the same) ---
         if (!response.ok) {
-            // Throw an error if the HTTP status is 4xx or 5xx
             throw new Error(`API Request Failed: ${response.status} ${response.statusText}`);
         }
 
-        const artifacts = await response.json();
+const artifacts = await response.json();
         
         // --- Rendering Logic ---
         modelsGrid.innerHTML = ''; // Clear loading message
