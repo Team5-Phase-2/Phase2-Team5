@@ -77,7 +77,7 @@ def sanitize_request(event):
   Returns (sanitized_dict, error_response). On success error_response is None.
   """
   try:
-    params = event.get("queryStringParameters", {}) or {}
+    params = event.get("pathParameters", {}) or {}
 
     artifact_type = params.get("artifact_type", "")
     id = params.get("id", "")
