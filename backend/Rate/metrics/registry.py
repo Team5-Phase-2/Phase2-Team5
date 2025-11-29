@@ -13,6 +13,7 @@ from .size_score import size_score
 from .dataset_code import dataset_and_code_score
 from .dataset_quality import dataset_quality
 from .code_quality import code_quality
+from .reviewedness import reviewedness
 
 
 # List of (metric_key, metric_function) consumed by the runner
@@ -25,4 +26,5 @@ METRIC_REGISTRY = [
     ("dataset_and_code_score", dataset_and_code_score),
     ("dataset_quality", dataset_quality),
     ("code_quality", code_quality),
+    ("reviewedness", reviewedness),
 ]
