@@ -160,49 +160,72 @@ body {
 
 .card-header {
     display: flex;
-    justify-content: space-between;
+    flex-direction: column;
     align-items: flex-start;
-    margin-bottom: 10px;
+    margin-bottom: 15px;
 }
 
 .model-name {
     font-size: 1.3rem;
-    font-weight: 800;
-    color: var(--primary-color);
-}
-
-.model-type-tag {
-    background-color: #e9ecef;
-    color: var(--text-dark);
-    padding: 4px 8px;
-    border-radius: 4px;
-    font-size: 0.8rem;
-    font-weight: 600;
-}
-
-.card-details {
-    margin-top: auto; /* Pushes the details to the bottom */
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    border-top: 1px solid var(--secondary-color);
-    padding-top: 15px;
-}
-
-/* Specific Badge Styles for security/cost */
-.badge {
-    padding: 3px 8px;
-    border-radius: 4px;
-    font-size: 0.75rem;
     font-weight: 700;
+    color: var(--primary-color);
+    margin-bottom: 6px;
 }
 
-.badge-vetted {
-    background-color: var(--success-color);
-    color: white;
+.model-left {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
 }
 
-.badge-risk {
-    background-color: var(--danger-color);
-    color: white;
+.model-meta-wrap {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+}
+
+.model-id {
+    background: transparent;
+    padding: 0;
+    border-radius: 0;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, "Roboto Mono", monospace;
+    font-size: 0.8rem;
+    color: var(--text-dark);
+    margin-bottom: 10px;
+}
+
+
+.type-icon { width:44px; height:44px; border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:1.05rem; background: linear-gradient(180deg,#f8fbff,#ffffff); color:var(--primary-color); box-shadow:0 2px 6px rgba(0,0,0,0.04); margin-right:8px; }
+
+.type-badge { padding:4px 8px; border-radius:6px; font-weight:700; font-size:0.7rem; margin-left:0; }
+.type-model { background:#E0E7FF; color:#3730A3; }
+.type-dataset { background:#FEF9C3; color:#854D0E; }
+.type-code { background:#DCFCE7; color:#166534; }
+
+/* Actions */
+.card-actions { margin-top:auto; display:flex; gap:8px; justify-content:flex-start; }
+.btn-ghost { background:transparent; border:1px solid #e6e9ee; color:var(--text-dark); padding:8px 12px; border-radius:6px; font-weight:700; cursor:pointer; }
+.btn-ghost:hover { background:rgba(0,0,0,0.03); }
+
+/* small loading visual */
+.model-card.loading { opacity:0.95; filter:grayscale(6%); }
+
+/* ensure trunctation and tooltip are visible */
+.truncated-name {
+    max-width: 100%;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    white-space: normal;
+    line-height: 1.3;
+    word-break: break-all;
+}
+
+/* minor spacing tweaks for compact cards */
+.model-desc { margin-top:10px; color:var(--text-light); font-size:0.95rem; }
+.model-meta { display:flex; gap:10px; align-items:center; font-size:0.85rem; color:var(--text-light); flex-direction: column; align-items: flex-start; }
+
+/* keep responsive tweaks */
+@media (max-width:640px) {
+    .truncated-name { max-width:180px; }
+    .type-icon { width:40px; height:40px; font-size:1rem; }
 }
