@@ -27,9 +27,14 @@ def lambda_handler(event, context):
     details returned to clients, and add structured logging for observability.
   """
 
-  path = event["path"]
-  parts = path.strip("/").split("/")
-  model_id = parts[2]
+  path_params = event.get("pathParameters") or {}
+  model_id = path_params.get("id")
+  if not model_id:
+    return {
+        "statusCode": 400,
+        "body": json.dumps({"error": "Missing path parameter 'id'"})
+    }
+  
 
   # use the extracted model id as the S3 key (adjust prefix if needed)
   s3 = boto3.client("s3")
