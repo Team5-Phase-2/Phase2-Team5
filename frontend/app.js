@@ -15,12 +15,12 @@ function escapeHtml(str) {
         .replace(/'/g, "&#039;");
 }
 
-async function fetchModelDetails(id) {
+async function fetchModelDetails(id, model_type) {
     try {
         const [ratingResponse, costResponse, licenseResponse] = await Promise.all([
-            fetch(`${API_BASE_URL}/model/${id}/rate`).then(res => res.json()),
-            fetch(`${API_BASE_URL}/${id}/cost`).then(res => res.json()), // Artifact type assumed to be handled by backend
-            fetch(`${API_BASE_URL}/model/${id}/license-check`).then(res => res.json()),
+            fetch(`${API_BASE_URL}/artifact/model/${id}/rate`).then(res => res.json()),
+            fetch(`${API_BASE_URL}/artifact/${model_type}/${id}/cost`).then(res => res.json()), // Artifact type assumed to be handled by backend
+            //fetch(`${API_BASE_URL}/artifact/model/${id}/license-check`).then(res => res.json()),
         ]);
 
         return {
@@ -112,7 +112,7 @@ const artifacts = await response.json();
             modelsGrid.appendChild(placeholderCard);
 
             // fan-out to fetch details and replace the card when done
-            fetchModelDetails(model.id).then((details) => {
+            fetchModelDetails(model.id, model.type).then((details) => {
                 const fullCard = createModelCard(model, details);
                 modelsGrid.replaceChild(fullCard, placeholderCard);
             }).catch((err) => {
