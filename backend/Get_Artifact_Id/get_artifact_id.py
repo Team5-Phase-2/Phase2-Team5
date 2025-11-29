@@ -65,7 +65,7 @@ def get_artifact_handler(event, context):
     name = artifact_data.get("name")
     model_url = artifact_data.get("model_url")
     artifact_type = artifact_data.get("type")
-    model_id = artifact_data.get("model_id")
+    model_id = artifact_data.get("id")
 
     if not name or not model_url or not artifact_type or not model_id:
         return {"statusCode": 400, "body": json.dumps({"error": "Malformed artifact record: missing one or more required fields"})}

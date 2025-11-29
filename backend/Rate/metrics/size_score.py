@@ -162,6 +162,7 @@ def size_score(model_url: str) -> Tuple[Optional[float], int]:
         score = round(sum(device_scores.values()) / 4.0, 3)
         latency_ms = (time.time_ns() - start_ns) // 1_000_000
         return score, latency_ms
+        #return device_scores, latency_ms
 
     except Exception:
         latency_ms = (time.time_ns() - start_ns) // 1_000_000
