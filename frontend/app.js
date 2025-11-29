@@ -24,8 +24,8 @@ async function fetchModelDetails(id, model_type) {
         ]);
 
         return {
-            rating: ratingResponse, // e.g., 4.5
-            cost: costResponse,      // e.g., 0 or 1.99
+            rating: ratingResponse?.net_score ?? 'N/A',  // Extract net_score
+            cost: costResponse?.cost_mb ?? 'N/A', 
             isLicensed: licenseResponse // e.g., true/false
         };
     } catch (error) {
@@ -67,7 +67,34 @@ function createModelCard(model, details = { rating: 'N/A', cost: 0, isLicensed: 
 
     return card;
 }
+const modelDetailsCache = new Map();
 
+function openModelModal(model, details) {
+    // create overlay
+    const overlay = document.createElement('div');
+    overlay.className = 'modal-overlay';
+    overlay.innerHTML = `
+        <div class="modal-content">
+            <header class="modal-header">
+                <h2 class="modal-title">${escapeHtml(model.name || 'Untitled')}</h2>
+                <button class="close-btn" aria-label="Close">&times;</button>
+            </header>
+            <section class="modal-body">
+                <p><strong>ID:</strong> <code class="modal-id">${escapeHtml(model.id || '')}</code></p>
+                <p><strong>Type:</strong> <span class="modal-type type-${escapeHtml((model.type||'model').toLowerCase())}">${escapeHtml(model.type || 'model')}</span></p>
+                <p><strong>Rating:</strong> ${escapeHtml((typeof details.rating === 'number') ? details.rating.toString() : String(details.rating))}</p>
+                <p><strong>Cost:</strong> ${escapeHtml((typeof details.cost === 'number') ? `$${details.cost.toFixed(2)}` : String(details.cost))}</p>
+                <p><strong>Licensed/Vetted:</strong> ${details.isLicensed ? 'Yes' : 'No'}</p>
+            </section>
+        </div>
+    `;
+
+    // close handler
+    overlay.querySelector('.close-btn').addEventListener('click', () => overlay.remove());
+    overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.remove(); });
+
+    document.body.appendChild(overlay);
+}
 // --- 3. Main Initialization Function ---
 
 // Function to fetch the initial list of all artifacts
@@ -105,23 +132,45 @@ const artifacts = await response.json();
         } else {
             // Step 2: Render initial cards and trigger the fan-out for details
             artifacts.forEach((model) => {
-            // create a lightweight placeholder card (fast)
-            const placeholderDetails = { rating: 0, cost: 0, isLicensed: false };
-            const placeholderCard = createModelCard(model, placeholderDetails);
-            placeholderCard.classList.add('loading');
-            modelsGrid.appendChild(placeholderCard);
+            const placeholderCard = createModelCard(model, { rating: 'N/A', cost: 'N/A', isLicensed: false });
+            // mark clickable and attach model reference for later use
+            placeholderCard.classList.add('clickable');
+            placeholderCard._model = model;
 
-            // fan-out to fetch details and replace the card when done
-            fetchModelDetails(model.id, model.type).then((details) => {
-                const fullCard = createModelCard(model, details);
-                modelsGrid.replaceChild(fullCard, placeholderCard);
-            }).catch((err) => {
-                // keep placeholder but show error text
-                placeholderCard.classList.remove('loading');
-                const desc = placeholderCard.querySelector('.model-desc');
-                if (desc) desc.textContent = 'Failed to load details';
-                console.error(`Details error for ${model.id}:`, err);
+            // click on card -> open/fetch details (but ignore clicks on the Details button itself)
+            placeholderCard.addEventListener('click', async (e) => {
+                if (e.target.closest('.btn-details')) return; // let the details button handler handle it
+                const id = model.id;
+                console.log('Card clicked, model ID:', id); // DEBUG
+                if (!id) {
+                    alert('Model ID not available for this artifact.');
+                    return;
+                }
+
+                // use cache if available
+                if (modelDetailsCache.has(id)) {
+                    console.log('Using cached details for', id); // DEBUG
+                    openModelModal(model, modelDetailsCache.get(id));
+                    return;
+                }
+
+                // fetch details once, cache, then open modal
+                placeholderCard.classList.add('loading');
+                console.log('Fetching details for', id); // DEBUG
+                try {
+                    const details = await fetchModelDetails(id, model.type);
+                    console.log('Fetched details:', details); // DEBUG
+                    modelDetailsCache.set(id, details);
+                    openModelModal(model, details);
+                } catch (err) {
+                    console.error(`Failed to load details for ${id}:`, err);
+                    alert('Failed to load artifact details. See console for details.');
+                } finally {
+                    placeholderCard.classList.remove('loading');
+                }
             });
+
+            modelsGrid.appendChild(placeholderCard);
         });
         }
 
@@ -145,7 +194,7 @@ document.getElementById('searchButton').addEventListener('click', () => {
 document.addEventListener('DOMContentLoaded', init);
 
 
-document.getElementById('modelsGrid').addEventListener('click', (ev) => {
+document.getElementById('modelsGrid').addEventListener('click', async (ev) => {
     const copyBtn = ev.target.closest('.btn-copy');
     if (copyBtn) {
         const id = copyBtn.dataset.id;
@@ -156,11 +205,32 @@ document.getElementById('modelsGrid').addEventListener('click', (ev) => {
         }).catch(() => alert(`ID: ${id}`));
         return;
     }
+
     const detailsBtn = ev.target.closest('.btn-details');
     if (detailsBtn) {
-        const id = detailsBtn.dataset.id;
-        console.log('Open details for', id);
-        // placeholder: wire to a modal/route as needed
-        alert(`Open details for ${id}`);
+        ev.stopPropagation();
+        const card = detailsBtn.closest('.model-card');
+        if (!card || !card._model) { alert('Model info not available'); return; }
+
+        const model = card._model;
+        const id = model.id;
+
+        if (modelDetailsCache.has(id)) {
+            openModelModal(model, modelDetailsCache.get(id));
+            return;
+        }
+
+        // fetch once and open
+        card.classList.add('loading');
+        try {
+            const details = await fetchModelDetails(id, model.type); 
+            modelDetailsCache.set(id, details);
+            openModelModal(model, details);
+        } catch (err) {
+            console.error(err);
+            alert('Failed to load details.');
+        } finally {
+            card.classList.remove('loading');
+        }
     }
 });
