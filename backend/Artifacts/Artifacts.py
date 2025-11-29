@@ -92,7 +92,9 @@ def lambda_handler(event, context):
       key = f"{prefix}/{model_id}/metadata.json"
       print(f"lambda_handler: looking up key={key}")
 
-      response_objects.append(extract_metadata(s3, s3_bucket, key))
+      meta = extract_metadata(s3, s3_bucket, key)
+      if meta:
+        response_objects.append(meta)
       continue
 
     for page in paginator.paginate(Bucket=s3_bucket, Prefix=prefix):
@@ -102,7 +104,9 @@ def lambda_handler(event, context):
           if not key:
             continue
           if key.endswith("metadata.json"):
-            response_objects.append(extract_metadata(s3, s3_bucket, key))
+            meta = extract_metadata(s3, s3_bucket, key)
+            if meta:
+              response_objects.append(meta)
 
   # Apply pagination
   paginated_objects = response_objects[offset: offset + limit]
