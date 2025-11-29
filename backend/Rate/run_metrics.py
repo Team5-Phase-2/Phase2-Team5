@@ -12,8 +12,6 @@ When executed as a script this module runs all metrics for a sample model
 URL and prints each metric's score and latency followed by the net score.
 """
 
-from metric_runner import run_all_metrics
-
 WEIGHTS = {
     "ramp_up_time": 0.15,
     "bus_factor": 0.10,

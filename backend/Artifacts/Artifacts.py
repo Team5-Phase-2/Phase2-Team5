@@ -13,6 +13,18 @@ def lambda_handler(event, context):
 
   Pagination is controlled by an "offset" header.
   """
+  if event.get('httpMethod') == 'OPTIONS':
+        # Ensure these headers are correct based on your previous debugging
+        return {
+            'statusCode': 200,
+            'headers': {
+                'Access-Control-Allow-Origin': 'https://dkc81a64i5ewt.cloudfront.net',
+                'Access-Control-Allow-Methods': 'POST,OPTIONS', 
+                'Access-Control-Allow-Headers': 'Content-Type,Authorization,offset', 
+                'Content-Type': 'application/json'
+            },
+            'body': '' 
+        }
   s3_bucket = os.environ.get("REGISTRY_BUCKET")
   if not s3_bucket:
     print("lambda_handler: REGISTRY_BUCKET not configured")
@@ -80,7 +92,9 @@ def lambda_handler(event, context):
       key = f"{prefix}/{model_id}/metadata.json"
       print(f"lambda_handler: looking up key={key}")
 
-      response_objects.append(extract_metadata(s3, s3_bucket, key))
+      meta = extract_metadata(s3, s3_bucket, key)
+      if meta:
+        response_objects.append(meta)
       continue
 
     for page in paginator.paginate(Bucket=s3_bucket, Prefix=prefix):
@@ -90,7 +104,9 @@ def lambda_handler(event, context):
           if not key:
             continue
           if key.endswith("metadata.json"):
-            response_objects.append(extract_metadata(s3, s3_bucket, key))
+            meta = extract_metadata(s3, s3_bucket, key)
+            if meta:
+              response_objects.append(meta)
 
   # Apply pagination
   paginated_objects = response_objects[offset: offset + limit]

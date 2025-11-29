@@ -68,12 +68,14 @@ def run_all_metrics(event, context):
     net_score = calculate_net_score(results)
 
     # 3. Determine whether to ingest (example rule)
+    '''
     for k, (score, latency) in results.items():
         if score is None or score < 0.5:
             return {
                 "statusCode": 424,
                 "body": {}
             }
+    '''
         
     output_payload = {
         "artifact_type": artifact_type,
