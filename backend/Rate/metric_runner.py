@@ -28,6 +28,7 @@ def run_all_metrics(event, context):
         data = event
         artifact_type = data.get("artifact_type")
         model_url = data.get("source_url")
+        name = data.get("name")
 
         print(f"Processing artifact: {artifact_type} | URL: {model_url}")
 
@@ -81,7 +82,8 @@ def run_all_metrics(event, context):
         "artifact_type": artifact_type,
         "model_url": model_url,
         "results": results,
-        "net_score": net_score
+        "net_score": net_score,
+        "name": name
     }
 
 
