@@ -44,7 +44,7 @@ def extract_status_code(response: str) -> float:
     pattern = r"Final Response -- Status Code : (\d+(?:\.\d+)?)"
     match = re.search(pattern, response)
     if match:
-        return match.group(1)
+        return float(match.group(1))
     else:
         return 0.0
 
