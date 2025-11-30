@@ -35,7 +35,6 @@ def fetch_hf_readme_text(model_url: str) -> str:
 def query_genai(query: str) -> dict:
     try:
         api_key = environ.get("PURDUE_GENAI_API_KEY")
-        api_key = 'sk-27f7d8c436b844b1ae6c3213e595670e'
     except Exception as e:
         return e, api_key
 
