@@ -6,6 +6,8 @@ transient errors to allow metrics to continue gracefully.
 """
 
 import requests
+import json
+from os import environ
 from scoring import _hf_model_id_from_url
 
 
@@ -29,3 +31,37 @@ def fetch_hf_readme_text(model_url: str) -> str:
         # Network errors and malformed URLs result in an empty string.
         return ""
 
+
+def query_genai(query: str) -> dict:
+    try:
+        api_key = environ.get("PURDUE_GENAI_API_KEY")
+    except Exception as e:
+        return e, api_key
+
+    url = "https://genai.rcac.purdue.edu/api/chat/completions"
+    
+    headers = {
+        "Authorization": f"Bearer {api_key}",
+        "Content-Type": "application/json"
+    }
+    
+    body = {
+        "model": "llama3.3:70b",
+        "messages": [
+            {
+                "role": "user",
+                "content": query
+            }
+        ],
+        "stream": False
+    }
+    
+    try:
+        response = requests.post(url, headers=headers, json=body, timeout=60)
+        response.raise_for_status()
+        return {
+            "statusCode": 200,
+            "body": json.dumps(response.json())
+        }
+    except requests.exceptions.RequestException as e:
+        return e, api_key
