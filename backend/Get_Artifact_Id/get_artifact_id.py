@@ -41,8 +41,8 @@ def get_artifact_handler(event, context):
     model_id = path_params.get("id")
 
     #if not artifact_type or not model_id:
-    if not artifact_type or model_id is None: #THIS LINE MODIFIED
-        return {"statusCode": 400, "body": json.dumps({"error": "There is missing field(s) in the artifact_type or artifact_id or it is formed improperly, or is invalid."})}
+    if not artifact_type or not model_id:
+        return {"statusCode": 400, "body": json.dumps({"error": "Missing required parameters: artifact_type and model_id"})}
 
     # Build the S3 key where metadata is stored
     s3_key = f"artifacts/{artifact_type}/{model_id}/metadata.json"
@@ -53,17 +53,17 @@ def get_artifact_handler(event, context):
         file_content = response["Body"].read().decode("utf-8")
         artifact_data = json.loads(file_content)
     except s3.exceptions.NoSuchKey:
-        return {"statusCode": 404, "body": json.dumps({"error": f"Artifact does not exist."})}
+        return {"statusCode": 404, "body": json.dumps({"error": f"Artifact with ID {model_id} not found."})}
     except ClientError as e:
         if e.response["Error"]["Code"] == "NoSuchKey":
-            return {"statusCode": 404, "body": json.dumps({"error": f"Artifact does not exist."})}
+            return {"statusCode": 404, "body": json.dumps({"error": f"Artifact with ID {model_id} not found."})}
         else:
             return {"statusCode": 400, "body": json.dumps({"error": "Error retrieving artifact", "detail": str(e)})}
     except Exception as e:
         return {"statusCode": 400, "body": json.dumps({"error": "Unhandled error", "detail": str(e)})}
 
     # Validate required fields exist in the stored artifact
-    '''
+    
     name = artifact_data.get("name")
     model_url = artifact_data.get("model_url")
     artifact_type = artifact_data.get("type")
@@ -77,8 +77,8 @@ def get_artifact_handler(event, context):
     response_body = {"metadata": metadata, "data": data}
 
     return {"statusCode": 200, "headers": {"Content-Type": "application/json", "Access-Control-Allow-Origin": "*"}, "body": json.dumps(response_body)}
+    
     '''
-
     metadata = {
         "name": artifact_data.get("name"),
         "id": artifact_data.get("id"),
@@ -113,3 +113,4 @@ def get_artifact_handler(event, context):
         },
         "body": json.dumps(response_body)
     }
+    '''
