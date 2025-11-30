@@ -7,6 +7,20 @@ from typing import Optional, Tuple
 from .utils import query_genai
 
 def reproducibility(model_url: str) -> Tuple[Optional[float], int]:
+    """
+    Evaluates the reproducibility of example code from a model's README.
+
+    This function queries a generative AI to execute the example code from the README at the given model URL,
+    simulating a standard environment with only explicitly imported libraries preinstalled. It returns a status code
+    indicating whether the code works out of the box, after up to two fixes, or not at all, along with the latency
+    of the evaluation in milliseconds.
+
+    Parameters:
+        model_url (str): The URL of the model or dataset whose README example code should be evaluated.
+
+    Returns:
+        Tuple[Optional[float], int]: A tuple containing the reproducibility score (1.0, 0.5, or 0.0) and the latency in milliseconds.
+    """
   start_ns = time.time_ns()
 
   # query: str = f'Run example code from a readme you can get from the URL: {model_url}. Do not simulate errors that do not happen.' \
