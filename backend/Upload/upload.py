@@ -82,10 +82,6 @@ def lambda_handler(event, context):
         if isinstance(raw_score, dict):
             results["size_score"] = raw_score
             results["size_score_latency"] = latency
-        else:
-            # fallback: only average score available
-            results["size_score"] = {"average_score": raw_score}
-            results["size_score_latency"] = latency
     #------------------------------------------------------ (remove if issues)
 
     # Construct the metadata payload that will be stored in S3.
