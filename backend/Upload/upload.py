@@ -73,6 +73,21 @@ def lambda_handler(event, context):
     numeric_hash = int(hash_object.hexdigest(), 16)
     model_id = numeric_hash % 9999999967
 
+    #adding changes to handle size_score returning dict
+    if "size_score" in results:
+        raw_score, latency = results["size_score"]
+
+        # raw_score should be a dict containing:
+        #   {"breakdown": {...}, "average_score": x}
+        if isinstance(raw_score, dict):
+            results["size_score"] = raw_score
+            results["size_score_latency"] = latency
+        else:
+            # fallback: only average score available
+            results["size_score"] = {"average_score": raw_score}
+            results["size_score_latency"] = latency
+    #------------------------------------------------------ (remove if issues)
+
     # Construct the metadata payload that will be stored in S3.
     output = {
         "type": artifact_type,

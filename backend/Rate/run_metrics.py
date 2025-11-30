@@ -30,6 +30,11 @@ def calculate_net_score(results: dict) -> float:
         r = results.get(name)
         if r is not None:
             score = r[0]
+
+            #change to handle size_score returning dict
+            if isinstance(score, dict):
+                score = score.get("average_score")
+
             if score is not None:
                 net_score += score * w
                 total_weight += w
