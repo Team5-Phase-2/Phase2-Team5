@@ -159,12 +159,12 @@ def size_score(model_url: str) -> Tuple[Optional[float], int]:
             device_scores["aws_server"] = 0.0
 
         device_scores = {k: round(float(v), 3) for k, v in device_scores.items()}
-        score = round(sum(device_scores.values()) / 4.0, 3)
-        combined_score = {"breakdown": device_scores,
-                          "average_score": score}
+        #score = round(sum(device_scores.values()) / 4.0, 3)
+        #combined_score = {"breakdown": device_scores,
+        #                  "average_score": score}
         
         latency_ms = (time.time_ns() - start_ns) // 1_000_000
-        return combined_score, latency_ms
+        return device_scores, latency_ms
         #return score, latency_ms
         #return device_scores, latency_ms
 
