@@ -34,6 +34,7 @@ def lambda_handler(event, context):
     try:
         body = json.loads(event.get("body", "{}"))
         url = body.get("url")
+        name = body.get("name")
     except json.JSONDecodeError:
         return {"statusCode": 400, "body": json.dumps({"error": "Invalid JSON"})}
 
@@ -42,7 +43,7 @@ def lambda_handler(event, context):
         return {"statusCode": 400, "body": json.dumps({"error": "Missing artifact_type or url"})}
 
     # Prepare the payload that the Rate Lambda expects
-    payload_for_Rate = {"artifact_type": artifact_type, "source_url": url, "status": "received"}
+    payload_for_Rate = {"artifact_type": artifact_type, "source_url": url, "name": name, "status": "received"}
 
     try:
         # Invoke Rate synchronously and forward its result to the API caller.

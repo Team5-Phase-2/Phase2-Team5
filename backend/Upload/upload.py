@@ -55,6 +55,7 @@ def lambda_handler(event, context):
     model_url = body.get("model_url")
     results = body.get("results")
     net_score = body.get("net_score")
+    name = body.get("name")
 
     if not artifact_type or not model_url or results is None or net_score is None:
         # Missing required fields
@@ -66,7 +67,7 @@ def lambda_handler(event, context):
         }
 
     # Derive a human-friendly name from the URL (last path component).
-    name = model_url.rstrip("/").split("/")[-1]
+    # name = model_url.rstrip("/").split("/")[-1]
 
     # Compute a deterministic numeric id using SHA-256; mod to keep it small.
     hash_object = hashlib.sha256(name.encode())
