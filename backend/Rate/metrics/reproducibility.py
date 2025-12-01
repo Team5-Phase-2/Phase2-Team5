@@ -53,7 +53,7 @@ def reproducibility(model_url: str) -> Tuple[Optional[float], int]:
     latency: int = (time.time_ns() - start_ns) // 1_000_000
     return score, latency
     
-    def extract_status_code(response: str) -> float:
+def extract_status_code(response: str) -> float:
     pattern = r"Final Response -- Status Code : (\d+(?:\.\d+)?)"
     match = re.search(pattern, response)
     if match:
@@ -62,30 +62,31 @@ def reproducibility(model_url: str) -> Tuple[Optional[float], int]:
         return 0.0
     
     
-    if __name__ == "__main__":
-        urls = {
-        "https://huggingface.co/google-bert/bert-base-uncased",
-        "https://huggingface.co/datasets/bookcorpus/bookcorpus",
-        "https://github.com/google-research/bert",
-        "https://huggingface.co/parvk11/audience_classifier_model",
-        "https://huggingface.co/distilbert-base-uncased-distilled-squad",
-        "https://huggingface.co/caidas/swin2SR-lightweight-x2-64",
-        "https://huggingface.co/vikhyatk/moondream2",
-        "https://huggingface.co/microsoft/git-base",
-        "https://huggingface.co/WinKawaks/vit-tiny-patch16-224",
-        "https://huggingface.co/patrickjohncyh/fashion-clip",
-        
-        "https://huggingface.co/lerobot/diffusion_pusht",
-        "https://huggingface.co/parthvpatil18/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaab",
-        "https://huggingface.co/microsoft/resnet-50",
-        "https://huggingface.co/crangana/trained-gender",
-        "https://huggingface.co/onnx-community/trained-gender-ONNX",
-        "https://huggingface.co/datasets/rajpurkar/squad",
-        "https://www.kaggle.com/datasets/hliang001/flickr2k",
-        "https://github.com/zalandoresearch/fashion-mnist",
-        }
+if __name__ == "__main__":
+    urls = {
+    "https://huggingface.co/google-bert/bert-base-uncased",
+    "https://huggingface.co/datasets/bookcorpus/bookcorpus",
+    "https://github.com/google-research/bert",
+    "https://huggingface.co/parvk11/audience_classifier_model",
+    "https://huggingface.co/distilbert-base-uncased-distilled-squad",
+    "https://huggingface.co/caidas/swin2SR-lightweight-x2-64",
+    "https://huggingface.co/vikhyatk/moondream2",
+    "https://huggingface.co/microsoft/git-base",
+    "https://huggingface.co/WinKawaks/vit-tiny-patch16-224",
+    "https://huggingface.co/patrickjohncyh/fashion-clip",
     
+    "https://huggingface.co/lerobot/diffusion_pusht",
+    "https://huggingface.co/parthvpatil18/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaab",
+    "https://huggingface.co/microsoft/resnet-50",
+    "https://huggingface.co/crangana/trained-gender",
+    "https://huggingface.co/onnx-community/trained-gender-ONNX",
+    "https://huggingface.co/datasets/rajpurkar/squad",
+    "https://www.kaggle.com/datasets/hliang001/flickr2k",
+    "https://github.com/zalandoresearch/fashion-mnist",
+    }
+
     for url in urls:
         score, latency = reproducibility(url)
         print(score, latency)
-    
+
+
