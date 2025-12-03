@@ -70,6 +70,17 @@ def lambda_handler(event, context):
     if isinstance(v, (list, tuple)) and len(v) >= 2:
       return v[1] if v[1] is not None else 0
     return 0
+  
+  def get_size_score_dict():
+    v = results.get("size_score")
+    if isinstance(v, (list, tuple)) and len(v) >= 1 and isinstance(v[0], dict):
+        return v[0]
+    return {
+        "raspberry_pi": 0,
+        "jetson_nano": 0,
+        "desktop_pc": 0,
+        "aws_server": 0
+    }
 
   response_obj = {
     "name": name,
@@ -96,12 +107,7 @@ def lambda_handler(event, context):
     "reviewedness_latency": get_latency("reviewedness"),
     "tree_score": 0.75,
     "tree_score_latency": 0,
-    "size_score": {
-      "raspberry_pi": 0,
-      "jetson_nano": 0,
-      "desktop_pc": 0,
-      "aws_server": 0,
-    },
+    "size_score": get_size_score_dict(),
     "size_score_latency": get_latency("size_score"),
   }
 
