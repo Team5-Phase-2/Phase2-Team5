@@ -68,12 +68,13 @@ def get_artifact_handler(event, context):
     model_url = artifact_data.get("model_url")
     artifact_type = artifact_data.get("type")
     model_id = artifact_data.get("id")
+    download_url = artifact_data.get("download_url")
 
     if not name or not model_url or not artifact_type or not model_id:
         return {"statusCode": 400, "body": json.dumps({"error": "Malformed artifact record: missing one or more required fields"})}
 
     metadata = {"name": name, "id": model_id, "type": artifact_type}
-    data = {"url": model_url}
+    data = {"url": model_url, "download_url": download_url}
     response_body = {"metadata": metadata, "data": data}
 
     return {"statusCode": 200, "headers": {"Content-Type": "application/json", "Access-Control-Allow-Origin": "*"}, "body": json.dumps(response_body)}
