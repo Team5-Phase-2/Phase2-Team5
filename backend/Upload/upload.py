@@ -15,6 +15,7 @@ import json
 import os
 import uuid
 import hashlib
+import base64
 from datetime import datetime
 import boto3
 import requests #NEW
@@ -80,120 +81,230 @@ def lambda_handler(event, context):
 
     #CHANGES START HERE---------------------------------------------
 
-    download_url = None  
+    # URLs to store
+    zip_download_url = None
+    readme_download_url = None
 
+    parsed = urlparse(model_url)
+    host = parsed.netloc.lower()
+
+    # =====================================================================
+    # 1. FULL ZIP DOWNLOAD 
+    # =====================================================================
     try:
-        #get url to download from
-        parsed = urlparse(model_url)
-        host = parsed.netloc.lower()
+        path_parts = [p for p in parsed.path.split("/") if p]
 
-        #handle hugging face 
+        # -------------------- HuggingFace ZIP --------------------
         if "huggingface.co" in host:
-            
-            path_parts = [p for p in parsed.path.split("/") if p]
             if len(path_parts) < 2:
-                raise ValueError(f"Cannot infer Hugging Face repo from URL: {model_url}")
-            hf_repo_id = "/".join(path_parts[:2])  
+                raise ValueError("Invalid HuggingFace URL")
 
-            api_url = f"https://huggingface.co/api/models/{hf_repo_id}"
-            print(f"Fetching HF model metadata from {api_url}")
-            info_resp = requests.get(api_url, timeout=(2.0, 8.0))
-            info_resp.raise_for_status()
-            info = info_resp.json() or {}
+            path = parsed.path.strip("/")
+            parts = path.split("/")
 
-            head = info.get("sha")
-            siblings = info.get("siblings") or []
-            if not head or not isinstance(siblings, list) or not siblings:
-                raise ValueError(f"No siblings or sha for HF model: {hf_repo_id}")
+            if parts[0] == "datasets":
+                repo_type = "datasets"
+                repo_id = "/".join(parts[1:3])   # owner/name
+            else:
+                repo_type = "models"
+                repo_id = "/".join(parts[0:2])   # owner/name
 
+            api_url = f"https://huggingface.co/api/{repo_type}/{repo_id}"
+            print("HF API:", api_url)
+
+            info = requests.get(api_url, timeout=(3, 15)).json()
+            sha = info.get("sha")
+            siblings = info.get("siblings", [])
+
+            tmp_zip = f"/tmp/{model_id}.zip"
             zip_key = f"artifacts/{artifact_type}/{model_id}/artifact.zip"
 
-            # Create a ZIP file in /tmp
-            zip_path = f"/tmp/{model_id}.zip"
-            with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zipf:
+            with zipfile.ZipFile(tmp_zip, "w", zipfile.ZIP_DEFLATED) as zipf:
                 for s in siblings:
-                    rfilename = (s.get("rfilename") or "").strip()
-                    if not rfilename:
+                    filename = s.get("rfilename")
+                    if not filename:
                         continue
+                    raw_url = f"https://huggingface.co/{repo_id}/resolve/{sha}/{filename}"
+                    r = requests.get(raw_url, timeout=(3, 15))
+                    if r.status_code == 200:
+                        zipf.writestr(filename, r.content)
 
-                    file_url = f"https://huggingface.co/{hf_repo_id}/resolve/{head}/{rfilename}"
-                    print(f"Downloading HF file: {file_url}")
-                    r = requests.get(file_url, timeout=(2.0, 20.0))
-                    r.raise_for_status()
-                    zipf.writestr(rfilename, r.content)
-
-            # Upload ZIP to S3
-            with open(zip_path, "rb") as f:
+            with open(tmp_zip, "rb") as f:
                 s3.put_object(
                     Bucket=s3_bucket,
                     Key=zip_key,
                     Body=f,
-                    ContentType="application/zip",
+                    ContentType="application/zip"
                 )
 
-            #Generate presigned URL
-            download_url = s3.generate_presigned_url(
+            zip_download_url = s3.generate_presigned_url(
                 "get_object",
                 Params={"Bucket": s3_bucket, "Key": zip_key},
                 ExpiresIn=3600,
             )
 
-        #hanlde github
+        # -------------------- GitHub ZIP --------------------
         elif "github.com" in host:
-
-            #download repository archive as a ZIP
-            path_parts = [p for p in parsed.path.split("/") if p]
-            if len(path_parts) < 2:
-                raise ValueError(f"Cannot infer GitHub repo from URL: {model_url}")
-
             owner, repo = path_parts[0], path_parts[1].replace(".git", "")
-            
-            zip_download_url = f"https://github.com/{owner}/{repo}/archive/refs/heads/main.zip"
-            print(f"Downloading GitHub repo archive: {zip_download_url}")
+            r = None
+            for branch in ["main", "master"]:
+                zip_link = f"https://github.com/{owner}/{repo}/archive/refs/heads/{branch}.zip"
+                r = requests.get(zip_link, timeout=(3, 15))
+                if r.status_code == 200:
+                    break
 
-            r = requests.get(zip_download_url, timeout=(5.0, 30.0))
-            r.raise_for_status()
+            if r.status_code != 200:
+                raise ValueError("Could not download GitHub ZIP")
 
             zip_key = f"artifacts/{artifact_type}/{model_id}/artifact.zip"
             s3.put_object(
                 Bucket=s3_bucket,
                 Key=zip_key,
                 Body=r.content,
-                ContentType="application/zip",
+                ContentType="application/zip"
             )
 
-            #Generate presigned URL
-            download_url = s3.generate_presigned_url(
+            zip_download_url = s3.generate_presigned_url(
                 "get_object",
                 Params={"Bucket": s3_bucket, "Key": zip_key},
                 ExpiresIn=3600,
             )
 
-        #if neither of these print error
-        else:
-            # Unsupported domain – keep system working, just skip download_url.
-            print(f"No artifact download implemented for URL host: {host}")
+    except Exception as e:
+        print("ZIP download failed:", e)
+        zip_download_url = None
+
+    # =====================================================================
+    # 2. README-ONLY DOWNLOAD
+    # =====================================================================
+    try:
+        # -------------------- GitHub README --------------------
+        if "github.com" in host:
+            owner, repo = path_parts[0], path_parts[1].replace(".git", "")
+            api_url = f"https://api.github.com/repos/{owner}/{repo}/readme"
+            print("GITHUB README:", api_url)
+
+            gh = requests.get(api_url, timeout=(3, 12), headers={"User-Agent": "Mozilla/5.0"})
+            gh.raise_for_status()
+
+            info = gh.json()
+            readme_bytes = base64.b64decode(info["content"])
+            readme_name = info.get("name", "README")
+
+            readme_key = f"artifacts/{artifact_type}/{model_id}/{readme_name}"
+            s3.put_object(
+                Bucket=s3_bucket,
+                Key=readme_key,
+                Body=readme_bytes,
+                ContentType="text/plain"
+            )
+
+            readme_download_url = s3.generate_presigned_url(
+                "get_object",
+                Params={"Bucket": s3_bucket, "Key": readme_key},
+                ExpiresIn=3600,
+            )
+
+        # -------------------- HuggingFace README --------------------
+        elif "huggingface.co" in host:
+            path = parsed.path.strip("/")
+            parts = path.split("/")
+
+            if parts[0] == "datasets":
+                repo_type = "datasets"
+                repo_id = "/".join(parts[1:3])   # owner/name
+            else:
+                repo_type = "models"
+                repo_id = "/".join(parts[0:2])   # owner/name
+
+            api_url = f"https://huggingface.co/api/{repo_type}/{repo_id}"
+            print("HF README API:", api_url)
+
+            info = requests.get(api_url, timeout=(3, 12)).json()
+            sha = info.get("sha")
+            siblings = info.get("siblings", [])
+
+            readme_file = None
+            for s in siblings:
+                if "readme" in s.get("rfilename", "").lower():
+                    readme_file = s["rfilename"]
+                    break
+
+            if readme_file:
+                raw_url = f"https://huggingface.co/{repo_id}/resolve/{sha}/{readme_file}"
+                r = requests.get(raw_url, timeout=(3, 12))
+                r.raise_for_status()
+
+                readme_key = f"artifacts/{artifact_type}/{model_id}/{readme_file}"
+                s3.put_object(
+                    Bucket=s3_bucket,
+                    Key=readme_key,
+                    Body=r.content,
+                    ContentType="text/plain"
+                )
+
+                readme_download_url = s3.generate_presigned_url(
+                    "get_object",
+                    Params={"Bucket": s3_bucket, "Key": readme_key},
+                    ExpiresIn=3600,
+                )
 
     except Exception as e:
-        # Log the error but DO NOT fail upload entirely – we still want metadata/results stored.
-        print(f"Artifact download/zip/upload failed: {e}")
-        download_url = None
+        print("README download failed:", e)
+        readme_download_url = None
     
     #---------------------------------------------------------------
 
     # Construct the metadata payload that will be stored in S3.
+    # Note: not currently using readme url but have it if needed later
     output = {
         "type": artifact_type,
         "model_url": model_url,
-        "download_url": download_url, #THIS IS NEW
+        "download_url": zip_download_url, #THIS IS NEW
         "results": results,
         "net_score": net_score,
         "name": name,
         "id": model_id
     }
 
+
     metadata = {"name": name, "id": model_id, "type": artifact_type}
-    data = {"url": model_url, "download_url": download_url} #THIS IS CHANGED
+    data = {"url": model_url, "download_url": zip_download_url} #THIS IS CHANGED
+
+    #Name tracking for READMEs here-------------------------------------
+    index_key = "name_id.txt"
+
+    # Check if the index file exists
+    try:
+        s3.head_object(Bucket=s3_bucket, Key=index_key)
+        file_exists = True
+    except ClientError as e:
+        if e.response["Error"]["Code"] == "404":
+            file_exists = False
+        else:
+            raise
+
+    # If missing, create empty file
+    if not file_exists:
+        s3.put_object(Bucket=s3_bucket, Key=index_key, Body=b"")
+
+    # Prepare CSV line: name,id,type
+    append_line = f"{name},{model_id},{artifact_type}\n".encode("utf-8")
+
+    # Read existing contents
+    try:
+        obj = s3.get_object(Bucket=s3_bucket, Key=index_key)
+        existing = obj["Body"].read()
+    except ClientError:
+        existing = b""  # file was empty / unreadable
+
+    # Write updated file
+    s3.put_object(
+        Bucket=s3_bucket,
+        Key=index_key,
+        Body=existing + append_line
+    )
+    #--------------------------------------------------------------------
 
     # Write metadata JSON to S3 under a predictable key.
     s3_key = f"artifacts/{artifact_type}/{model_id}/metadata.json"
