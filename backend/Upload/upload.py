@@ -107,14 +107,14 @@ def lambda_handler(event, context):
 
             # Get SHA
             api_url = f"https://huggingface.co/api/{repo_type}/{repo_id}"
-            info = requests.get(api_url, timeout=(3, 10)).json()
+            info = requests.get(api_url, timeout=(3, 10), headers={"User-Agent": "Mozilla/5.0"}).json()
             sha = info.get("sha")
 
             # Download snapshot.zip directly
             zip_url = f"https://huggingface.co/{repo_id}/resolve/{sha}/snapshot.zip"
             print("HF SNAPSHOT:", zip_url)
 
-            r = requests.get(zip_url, timeout=(10, 60))
+            r = requests.get(zip_url, timeout=(10, 60), headers={"User-Agent": "Mozilla/5.0"})
             r.raise_for_status()
 
             zip_key = f"artifacts/{artifact_type}/{model_id}/artifact.zip"
@@ -164,7 +164,7 @@ def lambda_handler(event, context):
 
     except Exception as e:
         print("ZIP download failed:", e)
-        zip_download_url = None
+        zip_download_url = model_url
 
     # =====================================================================
     # 2. README-ONLY DOWNLOAD
@@ -212,7 +212,7 @@ def lambda_handler(event, context):
             api_url = f"https://huggingface.co/api/{repo_type}/{repo_id}"
             print("HF README API:", api_url)
 
-            info = requests.get(api_url, timeout=(3, 12)).json()
+            info = requests.get(api_url, timeout=(3, 12), headers={"User-Agent": "Mozilla/5.0"}).json()
             sha = info.get("sha")
             siblings = info.get("siblings", [])
 
@@ -224,7 +224,7 @@ def lambda_handler(event, context):
 
             if readme_file:
                 raw_url = f"https://huggingface.co/{repo_id}/resolve/{sha}/{readme_file}"
-                r = requests.get(raw_url, timeout=(3, 12))
+                r = requests.get(raw_url, timeout=(3, 12), headers={"User-Agent": "Mozilla/5.0"})
                 r.raise_for_status()
 
                 readme_key = f"artifacts/{artifact_type}/{model_id}/{readme_file}"
@@ -246,6 +246,11 @@ def lambda_handler(event, context):
         readme_download_url = None
     
     #---------------------------------------------------------------
+
+    #if no zip download url found then return model url
+    if zip_download_url is None:
+        zip_download_url = model_url
+
 
     # Construct the metadata payload that will be stored in S3.
     # Note: not currently using readme url but have it if needed later
