@@ -10,9 +10,10 @@ Notes:
 - Expects environment variable `REGISTRY_BUCKET` to be set to the S3 bucket
   name used for storing artifact metadata.
 """
-
 import json
-import os
+import zipfile
+import io
+from huggingface_hub import snapshot_download
 import uuid
 import hashlib
 import base64
@@ -21,7 +22,9 @@ import boto3
 import requests #NEW
 from urllib.parse import urlparse #NEW
 from botocore.exceptions import ClientError
+import os
 
+os.makedirs("/tmp/huggingface/hub", exist_ok=True)
 
 def lambda_handler(event, context):
     """Handle POST /artifact/{artifact_type} requests.
@@ -46,9 +49,7 @@ def lambda_handler(event, context):
             "body": json.dumps({"error": "REGISTRY_BUCKET not configured"})
         }
 
-    # Initialize S3 client (uses execution role / environment credentials).
     s3 = boto3.client("s3")
-
 
     # Parse and validate JSON body from API Gateway event.
     body = event
@@ -94,6 +95,75 @@ def lambda_handler(event, context):
 
         # -------------------- HuggingFace ZIP --------------------
         if "huggingface.co" in host:
+            
+
+            path = parsed.path.strip("/")
+            parts = path.split("/")
+
+            # Determine type + repo_id
+            if parts[0] == "datasets":
+                repo_type = "dataset"
+                repo_id = "/".join(parts[1:3])
+            else:
+                repo_type = "model"
+                repo_id = "/".join(parts[0:2])
+
+            # Define local paths for download and the final ZIP file in /tmp
+            # The directory name uses model_id to avoid conflicts
+            local_dir = os.path.join("/tmp/", f"{model_id}_repo")
+            zip_path = os.path.join("/tmp/", f"{model_id}.zip")
+            print(local_dir)
+            print(zip_path)
+            print(f"Downloading {repo_type} {repo_id} to {local_dir}...")
+
+            # 1. Download the repository using snapshot_download
+            downloaded_path = snapshot_download(
+                repo_id=repo_id,
+                repo_type=repo_type,
+                local_dir="/tmp/repo",
+                cache_dir="/tmp/huggingface/hub",
+                token=os.environ.get("HF_TOKEN", None)
+            )
+
+            print(f"Download complete: {downloaded_path}")
+
+            # 2. Compress the entire downloaded directory into a single ZIP file
+            zip_key = f"artifacts/{artifact_type}/{model_id}/artifact.zip"
+
+            with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zf:
+                for root, _, files in os.walk(downloaded_path):
+                    for file in files:
+                        full_path = os.path.join(root, file)
+                        # Create a relative path inside the zip file
+                        arcname = os.path.relpath(full_path, downloaded_path)
+                        zf.write(full_path, arcname=arcname)
+
+            print(f"Zip created at: {zip_path}")
+
+            # 3. Upload the created ZIP file to S3
+            s3.upload_file(
+                Filename=zip_path,
+                Bucket=s3_bucket,
+                Key=zip_key,
+                ExtraArgs={"ContentType": "application/zip"}
+            )
+
+            # 4. Generate presigned download URL
+            zip_download_url = s3.generate_presigned_url(
+                "get_object",
+                Params={"Bucket": s3_bucket, "Key": zip_key},
+                ExpiresIn=3600,
+            )
+
+            # 5. Clean up the /tmp directory (CRITICAL for Lambda)
+            try:
+                shutil.rmtree(local_dir)
+                os.remove(zip_path)
+                print("Clean up complete.")
+            except Exception as cleanup_e:
+                print(f"Warning: Failed to cleanup /tmp directory: {cleanup_e}")
+
+            '''
             path = parsed.path.strip("/")
             parts = path.split("/")
 
@@ -129,7 +199,7 @@ def lambda_handler(event, context):
                 "get_object",
                 Params={"Bucket": s3_bucket, "Key": zip_key},
                 ExpiresIn=3600,
-            )
+            )'''
 
 
         # -------------------- GitHub ZIP --------------------
