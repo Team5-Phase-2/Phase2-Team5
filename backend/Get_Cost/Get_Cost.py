@@ -32,34 +32,51 @@ def lambda_handler(event, context):
   artifact_type = sanitized["artifact_type"]
   dependency = sanitized["dependency"]
 
-  # Check existence of artifact store configuration
-  s3_bucket = os.environ.get("REGISTRY_BUCKET")
   s3 = boto3.client("s3")
-  s3_key = f"artifacts/{artifact_type}/{id}/metadata.json"
+  s3_bucket = os.environ.get("REGISTRY_BUCKET")
 
+
+  artifact_name = None
+  # Read name_id.txt from S3 bucket root to get artifact name mapping
   try:
-    response = s3.get_object(Bucket=s3_bucket, Key=s3_key)
-    file_content = response["Body"].read().decode("utf-8")
-    artifact_data = json.loads(file_content)
+    response = s3.get_object(Bucket=s3_bucket, Key="name_id.txt")
+    name_id_content = response["Body"].read().decode("utf-8")
+    
+    # Parse name_id.txt to find matching artifact
+    for line in name_id_content.strip().split("\n"):
+      parts = line.split(",")
+      if len(parts) == 3 and parts[1].strip() == id and parts[2].strip() == artifact_type:
+        artifact_name = parts[0].strip()
+        break
+    
+    if not artifact_name:
+      return {
+        "statusCode": 404,
+        "body": json.dumps({"error": f"Artifact mapping not found for ID {id}"})
+      }
   except s3.exceptions.NoSuchKey:
     return {
       "statusCode": 404,
-      "body": json.dumps({"error": f"Artifact with ID {id} not found."})
+      "body": json.dumps({"error": "Artifact registry file not found"})
     }
 
-  model_url = artifact_data.get("model_url")
 
   # TODO: implement actual size calculation (S3 head_object, sum dependencies)
-  
-  # Send url into Sagemaker to get size based on dependency var.
-
+  try:
+    s3_object = s3.head_object(Bucket=s3_bucket, Key=f"{artifact_name}.zip")
+    total_cost_mb = s3_object["ContentLength"] / (1024 * 1024)
+  except s3.exceptions.NoSuchKey:
+    return {
+      "statusCode": 404,
+      "body": json.dumps({"error": "Artifact registry file not found"})
+    }
 
   # For now return a placeholder success response indicating sanitized input
   return {
     "statusCode": 200,
     "body": json.dumps({
       "id": {
-        "cost_mb": None
+        "cost_mb": total_cost_mb
       }
     }),
   }
