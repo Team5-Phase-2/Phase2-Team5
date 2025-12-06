@@ -128,7 +128,7 @@ jobs:
   deploy-get-cost:
     uses: ./.github/workflows/aws_lambda_deploy.yml
     with:
-      lambda-dir: Get-Cost
+      lambda-dir: Get_Cost
       path: ./backend
     secrets:
       LAMBDA_AWS_ACCESS_KEY: ${{ secrets.LAMBDA_AWS_ACCESS_KEY }}
