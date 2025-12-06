@@ -27,6 +27,18 @@ jobs:
       LAMBDA_AWS_ACCESS_KEY: ${{ secrets.LAMBDA_AWS_ACCESS_KEY }}
       LAMBDA_AWS_SECRET_ACCESS_KEY: ${{ secrets.LAMBDA_AWS_SECRET_ACCESS_KEY }}
 
+  deploy-delete:
+    uses: ./.github/workflows/aws_lambda_deploy.yml
+    with:
+      lambda-dir: Delete
+      path: ./backend
+    secrets:
+      LAMBDA_AWS_ACCESS_KEY: ${{ secrets.LAMBDA_AWS_ACCESS_KEY }}
+      LAMBDA_AWS_SECRET_ACCESS_KEY: ${{ secrets.LAMBDA_AWS_SECRET_ACCESS_KEY }}
+
+
+
+
   deploy-regex:
     uses: ./.github/workflows/aws_lambda_deploy.yml
     with:
