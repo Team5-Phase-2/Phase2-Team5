@@ -15,6 +15,127 @@ function escapeHtml(str) {
         .replace(/'/g, "&#039;");
 }
 
+async function searchArtifacts(query) {
+    const modelsGrid = document.getElementById('modelsGrid');
+    const searchButton = document.getElementById('searchButton');
+    const searchInput = document.getElementById('searchInput');
+
+    // 💡 CHANGE 2: Handle empty query immediately (Before API call)
+    if (!query || query.trim() === '') {
+        console.log('Empty search query. Redirecting to home (init).');
+        
+        // Reset loading state if it somehow got set
+        searchButton.disabled = false; 
+        searchInput.disabled = false;
+        searchButton.innerHTML = searchButton.originalButtonContent || '<i class="fas fa-search"></i> Search';
+
+        // Call your initialization function to reload the full artifact list
+        init(); 
+        
+        return; // <--- Terminates the function
+    }
+
+    // 💡 We must define originalButtonContent globally or before the loading state begins
+    const originalButtonContent = searchButton.innerHTML;
+
+    // --- Loading State START ---
+    searchButton.disabled = true; 
+    searchInput.disabled = true;
+    modelsGrid.innerHTML = '<div class="model-card placeholder"><i class="fas fa-spinner fa-spin"></i> Searching artifacts...</div>';
+    searchButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Searching';
+    // --- Loading State END ---
+
+    try {
+        const fullUrl = `${API_BASE_URL}/artifact/byRegEx`;
+        
+        const requestBody = { 
+            'regex': query
+        };
+
+        const response = await fetch(fullUrl, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(requestBody), 
+        });
+
+        
+        // 💡 CHANGE 1: Explicitly check for 404 status before throwing a generic error
+        if (!response.ok) {
+            if (response.status === 404) {
+                 // Display the "No artifacts found" message and then exit the try block cleanly
+                 modelsGrid.innerHTML = `<div class="model-card placeholder">No artifacts found matching: <strong>${escapeHtml(query)}</strong>.</div>`;
+                 return; // <--- Exit try block to skip rendering logic below
+            }
+            // For any other error (400, 500, etc.), throw the standard error
+            throw new Error(`Search API Request Failed: ${response.status} ${response.statusText}`);
+        }
+
+        const artifacts = await response.json();
+        
+        // --- Rendering Search Results (This section is now only reached if response.ok is true) ---
+        modelsGrid.innerHTML = ''; // Clear loading message
+
+        if (artifacts.length === 0) {
+            modelsGrid.innerHTML = `<div class="model-card placeholder">No artifacts found matching: <strong>${escapeHtml(query)}</strong>.</div>`;
+        } else {
+            artifacts.forEach((model) => {
+            const placeholderCard = createModelCard(model, { rating: 'N/A', cost: 'N/A', isLicensed: false });
+            // mark clickable and attach model reference for later use
+            placeholderCard.classList.add('clickable');
+            placeholderCard._model = model;
+
+            // click on card -> open/fetch details (but ignore clicks on the Details button itself)
+            placeholderCard.addEventListener('click', async (e) => {
+                if (e.target.closest('.btn-details')) return; // let the details button handler handle it
+                const id = model.id;
+                console.log('Card clicked, model ID:', id); // DEBUG
+                if (!id) {
+                    alert('Model ID not available for this artifact.');
+                    return;
+                }
+
+                // use cache if available
+                if (modelDetailsCache.has(id)) {
+                    console.log('Using cached details for', id); // DEBUG
+                    openModelModal(model, modelDetailsCache.get(id));
+                    return;
+                }
+
+                // fetch details once, cache, then open modal
+                placeholderCard.classList.add('loading');
+                console.log('Fetching details for', id); // DEBUG
+                try {
+                    const details = await fetchModelDetails(id, model.type);
+                    console.log('Fetched details:', details); // DEBUG
+                    modelDetailsCache.set(id, details);
+                    openModelModal(model, details);
+                } catch (err) {
+                    console.error(`Failed to load details for ${id}:`, err);
+                    alert('Failed to load artifact details. See console for details.');
+                } finally {
+                    placeholderCard.classList.remove('loading');
+                }
+            });
+
+            modelsGrid.appendChild(placeholderCard);
+        });
+        }
+
+    } catch (error) {
+        modelsGrid.innerHTML = `<div class="model-card placeholder" style="background-color: var(--danger-color); color: white;">Search Error: Invalid Query Input</div>`;
+        console.error("Search failed:", error);
+    } finally {
+        // --- Revert State ---
+        searchButton.disabled = false;
+        searchInput.disabled = false;
+        searchButton.innerHTML = originalButtonContent;
+    }
+}
+
+
+
 async function fetchModelDetails(id, model_type) {
     try {
         const [ratingResponse, costResponse, licenseResponse] = await Promise.all([
@@ -186,7 +307,7 @@ document.getElementById('searchButton').addEventListener('click', () => {
     const query = document.getElementById('searchInput').value;
     // In a real app, this would trigger a function to call the /artifact/byRegEx endpoint
     console.log(`Searching with RegEx: ${query}`);
-    // TODO: Implement the fetch logic for search results here.
+    searchArtifacts(query);
 });
 
 
