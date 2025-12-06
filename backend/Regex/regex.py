@@ -113,6 +113,7 @@ def lambda_handler(event, context):
 
     # parse file lines
     matches = []
+    id_to_name_map = {}
 
     for line in text.splitlines():
         line = line.strip()
@@ -126,7 +127,7 @@ def lambda_handler(event, context):
             continue
 
         name, id_str, artifact_type = parts
-
+        id_to_name_map[id_str] = name
         # Match against the regex
         if compiled.search(name):
             matches.append({
@@ -134,6 +135,45 @@ def lambda_handler(event, context):
                 "id": id_str,
                 "type": artifact_type
             })
+
+    paginator = s3.get_paginator('list_objects_v2')
+    pages = paginator.paginate(Bucket=BUCKET_NAME, Prefix="artifacts/")
+
+    for page in pages:
+        if 'Contents' in page:
+            for obj in page['Contents']:
+                object_key = obj['Key']
+                
+                # Check if the object is a README.md file (optional filtering, but good practice)
+                if object_key.endswith('/README.md'):
+                    print(f"Processing {object_key}")
+                    # 2. Extract artifact_type and id from the key
+                    # Key structure: artifacts/{artifact_type}/{id}/README.md
+                    try:
+                        # Split by '/', filter empty strings, and extract the parts
+                        parts = object_key.split('/')
+                        artifact_type = parts[1]
+                        artifact_id = parts[2]
+                        name = id_to_name_map.get(artifact_id, "Unknown Name")
+                        
+                        # 3. Read the object content
+                        s3_object = s3.get_object(Bucket=BUCKET_NAME, Key=object_key)
+                        readme_content = s3_object['Body'].read().decode('utf-8')
+                        
+                        # 4. Apply regex search
+                        found_matches = re.findall(pattern, readme_content, re.IGNORECASE)
+                        
+                        if found_matches:
+                            # Add to matches list in the required format
+                            matches.append({
+                                "name": name,
+                                "id": artifact_id,
+                                "type": artifact_type
+                            })
+                            
+                    except Exception as e:
+                        print(f"Error processing {object_key}: {e}")
+                        continue
 
     if len(matches) == 0:
         return {
