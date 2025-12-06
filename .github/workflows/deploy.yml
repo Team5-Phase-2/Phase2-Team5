@@ -76,3 +76,11 @@ jobs:
       LAMBDA_AWS_SECRET_ACCESS_KEY: ${{ secrets.LAMBDA_AWS_SECRET_ACCESS_KEY }}
 
 
+  deploy-get-cost:
+    uses: ./.github/workflows/aws_lambda_deploy.yml
+    with:
+      lambda-dir: Get-Cost
+      path: ./backend
+    secrets:
+      LAMBDA_AWS_ACCESS_KEY: ${{ secrets.LAMBDA_AWS_ACCESS_KEY }}
+      LAMBDA_AWS_SECRET_ACCESS_KEY: ${{ secrets.LAMBDA_AWS_SECRET_ACCESS_KEY }}
