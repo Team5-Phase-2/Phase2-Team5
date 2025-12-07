@@ -93,9 +93,10 @@ def lambda_handler(event, context):
     try:
         path_parts = [p for p in parsed.path.split("/") if p]
 
-        # -------------------- HuggingFace ZIP --------------------
         if "huggingface.co" in host:
-            
+            '''
+            local_dir = f"/tmp/{model_id}_repo"
+            zip_path = f"/tmp/{model_id}.zip"
 
             path = parsed.path.strip("/")
             parts = path.split("/")
@@ -108,39 +109,21 @@ def lambda_handler(event, context):
                 repo_type = "model"
                 repo_id = "/".join(parts[0:2])
 
-            # Define local paths for download and the final ZIP file in /tmp
-            # The directory name uses model_id to avoid conflicts
-            local_dir = os.path.join("/tmp/", f"{model_id}_repo")
-            zip_path = os.path.join("/tmp/", f"{model_id}.zip")
-            print(local_dir)
-            print(zip_path)
-            print(f"Downloading {repo_type} {repo_id} to {local_dir}...")
-
-            # 1. Download the repository using snapshot_download
+            zip_key = f"artifacts/{artifact_type}/{model_id}/{name}.zip"
+            # Download using snapshot_download (cached download, auth via token)
             downloaded_path = snapshot_download(
                 repo_id=repo_id,
                 repo_type=repo_type,
                 local_dir="/tmp/repo",
                 cache_dir="/tmp/huggingface/hub",
-                token=os.environ.get("HF_TOKEN", None)
+                token=os.environ.get("HF_TOKEN", None),
+                resume_download=True
             )
 
-            print(f"Download complete: {downloaded_path}")
+            print(f"ZIP created at: {zip_path}")
 
-            # 2. Compress the entire downloaded directory into a single ZIP file
+            # Upload to S3
             zip_key = f"artifacts/{artifact_type}/{model_id}/artifact.zip"
-
-            with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zf:
-                for root, _, files in os.walk(downloaded_path):
-                    for file in files:
-                        full_path = os.path.join(root, file)
-                        # Create a relative path inside the zip file
-                        arcname = os.path.relpath(full_path, downloaded_path)
-                        zf.write(full_path, arcname=arcname)
-
-            print(f"Zip created at: {zip_path}")
-
-            # 3. Upload the created ZIP file to S3
             s3.upload_file(
                 Filename=zip_path,
                 Bucket=s3_bucket,
@@ -148,21 +131,30 @@ def lambda_handler(event, context):
                 ExtraArgs={"ContentType": "application/zip"}
             )
 
-            # 4. Generate presigned download URL
+            # Upload the ZIP to S3
+            s3.upload_file(
+                Filename=zip_path,
+                Bucket=s3_bucket,
+                Key=zip_key,
+                ExtraArgs={"ContentType": "application/zip"},
+            )
+            print(f"Uploaded ZIP to s3://{s3_bucket}/{zip_key}")
+
+            # Generate presigned download URL
             zip_download_url = s3.generate_presigned_url(
                 "get_object",
                 Params={"Bucket": s3_bucket, "Key": zip_key},
                 ExpiresIn=3600,
             )
 
-            # 5. Clean up the /tmp directory (CRITICAL for Lambda)
-            try:
-                shutil.rmtree(local_dir)
-                os.remove(zip_path)
-                print("Clean up complete.")
-            except Exception as cleanup_e:
-                print(f"Warning: Failed to cleanup /tmp directory: {cleanup_e}")
+            print(f"Download URL: {zip_download_url}")
 
+            # Clean up /tmp
+            try:
+                os.remove(zip_path)
+                print("Temporary ZIP cleaned up.")
+            except Exception as cleanup_e:
+                print(f"Warning: failed to remove temporary ZIP: {cleanup_e}")
             '''
             path = parsed.path.strip("/")
             parts = path.split("/")
@@ -181,10 +173,11 @@ def lambda_handler(event, context):
             sha = info.get("sha")
 
             # Download snapshot.zip directly
-            zip_url = f"https://huggingface.co/{repo_id}/resolve/{sha}/snapshot.zip"
+            file_path = "config.json"
+            zip_url = f"https://huggingface.co/{repo_id}/resolve/{sha}/{file_path}"
             print("HF SNAPSHOT:", zip_url)
 
-            r = requests.get(zip_url, timeout=(10, 60), headers={"User-Agent": "Mozilla/5.0"})
+            r = requests.get(zip_url, timeout=(10, 60), headers={"User-Agent": "Mozilla/5.0", "Authorization" : f"Bearer {os.environ.get("HF_TOKEN", None)}" })
             r.raise_for_status()
 
             zip_key = f"artifacts/{artifact_type}/{model_id}/artifact.zip"
@@ -199,7 +192,7 @@ def lambda_handler(event, context):
                 "get_object",
                 Params={"Bucket": s3_bucket, "Key": zip_key},
                 ExpiresIn=3600,
-            )'''
+            )
 
 
         # -------------------- GitHub ZIP --------------------
