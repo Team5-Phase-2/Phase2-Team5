@@ -1,7 +1,7 @@
 import boto3
 import json
 import os
-
+from botocore.exceptions import ClientError
 
 def lambda_handler(event, context):
   """
@@ -41,17 +41,21 @@ def lambda_handler(event, context):
   try:
     s3_object = s3.head_object(Bucket=s3_bucket, Key= s3_key)
     total_cost_mb = round(s3_object["ContentLength"] / (1024 * 1024))
-  except s3.exceptions.NoSuchKey:
-    return {
-      "statusCode": 404,
-      "body": json.dumps({"error": "Artifact registry file not found"})
-    }
+  except ClientError as e:
+        error_code = e.response["Error"]["Code"]
+
+        # S3 returns "404", "NoSuchKey", or "NotFound" depending on API
+        if error_code in ("404", "NoSuchKey", "NotFound"):
+            return {
+                "statusCode": 404,
+                "body": json.dumps({"error": "Artifact registry file not found"})
+            }
 
   # For now return a placeholder success response indicating sanitized input
   return {
     "statusCode": 200,
     "body": json.dumps({
-      "id": {
+      id: {
         "total_cost": total_cost_mb
       }
     }),
