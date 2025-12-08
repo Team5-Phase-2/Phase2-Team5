@@ -144,14 +144,16 @@ async function fetchModelDetails(id, model_type) {
             //fetch(`${API_BASE_URL}/artifact/model/${id}/license-check`).then(res => res.json()),
         ]);
 
+        const cost = Object.values(costResponse)[0]?.total_cost ?? 'N/A';
+
         return {
-            rating: ratingResponse?.net_score ?? 'N/A',  // Extract net_score
-            cost: costResponse?.cost_mb ?? 'N/A', 
-            isLicensed: licenseResponse // e.g., true/false
+            rating: ratingResponse?.net_score ?? 'N/A',
+            cost: `${cost} MB`,
         };
+
     } catch (error) {
         console.error(`Error fetching details for model ${id}:`, error);
-        return { rating: 'N/A', cost: 'N/A', isLicensed: false }; // Return safe defaults
+        return { rating: 'N/A', cost: 'N/A' };
     }
 }
 
@@ -162,17 +164,8 @@ function createModelCard(model, details = { rating: 'N/A', cost: 0, isLicensed: 
     card.dataset.modelId = model.id || '';
 
     const typeKey = (model.type || 'model').toLowerCase();
-    const iconMap = { model: 'fa-robot', dataset: 'fa-database', source: 'fa-code-branch' };
-    const typeIcon = iconMap[typeKey] || 'fa-box';
 
-    const isVetted = details.isLicensed === true;
-    const vettedBadge = isVetted
-        ? `<span class="badge badge-vetted"><i class="fas fa-shield-alt"></i> VETTED</span>`
-        : `<span class="badge badge-risk"><i class="fas fa-exclamation-triangle"></i> RISK</span>`;
-
-    const costDisplay = (typeof details.cost === 'number' && details.cost > 0) ? `$${details.cost.toFixed(2)}` : 'FREE';
     const ratingNum = (typeof details.rating === 'number') ? Math.round(details.rating) : null;
-    const ratingStars = ratingNum ? '⭐'.repeat(Math.max(1, Math.min(5, ratingNum))) : 'N/A';
 
     card.innerHTML = `
         <div class="card-header">
@@ -183,6 +176,11 @@ function createModelCard(model, details = { rating: 'N/A', cost: 0, isLicensed: 
 
         <div class="card-actions">
             <button class="btn btn-ghost btn-details" data-id="${escapeHtml(model.id || '')}">Details</button>
+
+            <button class="btn btn-primary btn-artifact" 
+                onclick="window.location.href='artifact.html?id=${escapeHtml(model.id)}&type=${escapeHtml(typeKey)}'">
+                View Artifact
+            </button>
         </div>
     `;
 
@@ -205,7 +203,6 @@ function openModelModal(model, details) {
                 <p><strong>Type:</strong> <span class="modal-type type-${escapeHtml((model.type||'model').toLowerCase())}">${escapeHtml(model.type || 'model')}</span></p>
                 <p><strong>Rating:</strong> ${escapeHtml((typeof details.rating === 'number') ? details.rating.toString() : String(details.rating))}</p>
                 <p><strong>Cost:</strong> ${escapeHtml((typeof details.cost === 'number') ? `$${details.cost.toFixed(2)}` : String(details.cost))}</p>
-                <p><strong>Licensed/Vetted:</strong> ${details.isLicensed ? 'Yes' : 'No'}</p>
             </section>
         </div>
     `;
