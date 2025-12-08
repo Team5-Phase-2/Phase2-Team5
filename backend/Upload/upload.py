@@ -173,8 +173,13 @@ def lambda_handler(event, context):
             sha = info.get("sha")
 
             # Download snapshot.zip directly
-            file_path = "config.json"
-            zip_url = f"https://huggingface.co/{repo_id}/resolve/{sha}/{file_path}"
+            if artifact_type == "model":
+                file_path = "config.json"
+                zip_url = f"https://huggingface.co/{repo_id}/resolve/{sha}/{file_path}"
+            else :
+                file_path = "README.md"
+                zip_url = f"https://huggingface.co/datasets/{repo_id}/resolve/{sha}/{file_path}"
+
             print("HF SNAPSHOT:", zip_url)
 
             r = requests.get(zip_url, timeout=(10, 60), headers={"User-Agent": "Mozilla/5.0", "Authorization" : f"Bearer {os.environ.get("HF_TOKEN", None)}" })
