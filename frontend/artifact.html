@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Artifact | SecureModelHub</title>
+    <link rel="stylesheet" href="/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+</head>
+
+<body>
+
+    <header class="header">
+        <a href="home.html" class="logo">SecureModelHub</a>
+        <nav class="nav">
+            <a href="/home.html" class="nav-link">Models</a>
+            <a href="/docs.html" class="nav-link">Docs</a>
+        </nav>
+    </header>
+
+    <main class="artifact-container">
+
+        <!-- Top Section -->
+        <div class="artifact-header">
+            <div>
+                <h1 id="artifactName">Artifact Name</h1>
+                <p class="artifact-id">ID: <span id="artifactId">Loading...</span></p>
+            </div>
+
+            <button id="downloadBtn" class="btn btn-primary">⬇ Download Artifact</button>
+        </div>
+
+        <!-- Score -->
+        <div class="score-section">
+            <div class="score-value">
+                Net Score: <span id="netScore">0.00</span>
+            </div>
+        </div>
+        <div class="score-section">
+            <details class="score-dropdown">
+                <summary>View Subscores</summary>
+                <div id="subscores"></div>
+            </details>
+        </div>
+
+        <!-- README -->
+        <section class="readme-section">
+            <h2>README</h2>
+            <div id="readmeContent" class="readme-box">Loading README...</div>
+        </section>
+
+        <!-- Delete Button -->
+        <div class="delete-section">
+            <button id="deleteBtn" class="btn btn-danger">
+                ❌ Delete Artifact
+            </button>
+            <p class="delete-warning">⚠ WARNING: This action is irreversible. The artifact will be permanently removed.</p>
+        </div>
+
+    </main>
+
+    <script src="artifact.js"></script>
+</body>
+</html>

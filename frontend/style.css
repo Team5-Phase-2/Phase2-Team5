@@ -44,6 +44,7 @@ body {
 .logo {
     font-size: 1.5rem;
     font-weight: 800;
+    text-decoration: none;
     color: var(--primary-color);
 }
 
@@ -272,4 +273,101 @@ body {
 @media (max-width:640px) {
     .truncated-name { max-width:180px; }
     .type-icon { width:40px; height:40px; font-size:1rem; }
+}
+
+/* Make page full-width and left-oriented */
+body {
+    width: 100%;
+    margin: 0;
+    padding: 0;
+    display: block;
+    text-align: left;
+}
+
+/* Full-width content */
+.artifact-container {
+    max-width: 100%;
+    width: 100%;
+    margin: 0;
+    padding: 20px 40px;
+}
+
+/* Allow content to span full width */
+.artifact-header,
+.score-section,
+.readme-section,
+.delete-section {
+    width: 100%;
+}
+
+/* Net Score label */
+.score-section {
+    text-align: center;
+    width: 100%;
+    margin: 40px 0;
+}
+
+/* Net Score label */
+.score-label {
+    font-size: 14px;
+    font-weight: 600;
+    color: #444;
+    margin-bottom: 5px;
+    display: block;
+    text-align: center; /* ensure label is centered */
+}
+
+/* Smaller, centered Net Score */
+.score-value {
+    font-size: 28px;
+    padding: 10px 14px;
+    border-radius: 8px;
+    background: #f3f3f3;
+    font-weight: 700;
+    display: inline-block; /* keeps width small but centered */
+}
+
+/* Center the subscores dropdown */
+.score-dropdown {
+    margin-top: 15px;
+    display: inline-block; /* centers inside score-section */
+}
+
+
+.artifact-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+
+
+.score-dropdown summary {
+    cursor: pointer;
+    font-weight: 600;
+}
+
+.readme-box {
+    padding: 1rem;
+    background: #f4f4f4;
+    border-radius: 6px;
+    white-space: pre-wrap;
+}
+
+.delete-section {
+    margin-top: 3rem;
+    text-align: center;
+}
+
+.btn-danger {
+    background: #c62828;
+    color: white;
+    padding: 10px 20px;
+    border-radius: 8px;
+}
+
+.delete-warning {
+    margin-top: 10px;
+    color: #c62828;
+    font-weight: bold;
 }
