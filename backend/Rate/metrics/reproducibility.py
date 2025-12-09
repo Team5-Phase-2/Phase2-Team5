@@ -3,8 +3,9 @@ import time
 import re
 import json
 from typing import Optional, Tuple
+from urllib.parse import urlparse 
 
-from .utils import query_genai
+from .utils import query_genai, fetch_hf_readme_text
 
 def reproducibility(model_url: str) -> Tuple[Optional[float], int]:
     """
@@ -22,6 +23,9 @@ def reproducibility(model_url: str) -> Tuple[Optional[float], int]:
         Tuple[Optional[float], int]: A tuple containing the reproducibility score (1.0, 0.5, or 0.0) and the latency in milliseconds.
     """
     start_ns = time.time_ns()
+
+    readme_content =  fetch_hf_readme_text(model_url).encode('utf-8')
+
     # query: str = f'Run example code from a readme you can get from the URL: {model_url}. Do not simulate errors that do not happen.' \
     # '1) Run the example code give in the readme and return a status code 1 if it works strait out of the box.' \
     # '2) If it doesn’t work see if you can fix it. After 2 attempts to fix it, if it works return a status code 0.5 otherwise return status code 0.' \
@@ -32,6 +36,8 @@ def reproducibility(model_url: str) -> Tuple[Optional[float], int]:
     # 'Respond with the formate: "Final Response -- Status Code : <>"'
     
     query: str = f'Please execute the example code from the README at {model_url} without simulating errors or assumptions.' \
+    f'The contents of the README are as follows:\n{readme_content.decode("utf-8")}\n' \
+    'If there is no contents in the README, try accessing the README directly from the url I provided previously.' \
     'Executed in a standard environment with no pip libraries already installed. Only preinstall libraries that come from explicite imports.' \
     'List any assumptions made.' \
     'Provide a status code of 1 if the code works straight out of the box, 0.5 if it works after 2 attempts to fix it, and 0 otherwise.' \
