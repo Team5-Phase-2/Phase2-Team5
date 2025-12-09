@@ -1,15 +1,38 @@
-/* --- Global Styles & Variables --- */
+/*
+|--------------------------------------------------------------------------
+| CSS DOCUMENTATION
+|--------------------------------------------------------------------------
+|
+| This file contains all the global and page-specific styles for SecureModelHub.
+| Styles are organized into the following major sections:
+| 1. GLOBAL RESET & VARIABLES
+| 2. LAYOUT & UTILITIES (Body, Centering, SR-Only)
+| 3. COMPONENTS (Header, Buttons, Cards, Modals)
+| 4. PAGE-SPECIFIC STYLES (Home/Artifacts, Contribute Form)
+| 5. MEDIA QUERIES (Responsiveness)
+|
+*/
+
+
+/*
+|--------------------------------------------------------------------------
+| 1. GLOBAL RESET & VARIABLES
+|--------------------------------------------------------------------------
+*/
+
 :root {
-    --primary-color: #007bff; /* Vibrant Blue for actions */
-    --secondary-color: #f8f9fa; /* Light background for sections */
-    --text-dark: #212529;
-    --text-light: #6c757d;
-    --card-bg: #ffffff;
-    --border-color: #ced4da;
-    --success-color: #28a745;
-    --danger-color: #dc3545;
+    --primary-color: #0072ee;      /* Vibrant Blue for actions */
+    --secondary-color: #f8f9fa;    /* Light background for sections */
+    --text-dark: #212529;          /* Main body text color */
+    --text-light: #444444;         /* Secondary/helper text color */
+    --card-bg: #ffffff;            /* White background for cards/modals */
+    --border-color: #ced4da;       /* Light gray border */
+    --success-color: #28a745;      /* Green for success actions */
+    --danger-color: #dc3545;       /* Red for destructive actions */
+    --focus-glow: rgba(0, 123, 255, 0.25); /* Focus box shadow */
 }
 
+/* Universal Reset */
 * {
     box-sizing: border-box;
     margin: 0;
@@ -17,12 +40,46 @@
     font-family: 'Inter', sans-serif;
 }
 
+/*
+|--------------------------------------------------------------------------
+| 2. LAYOUT & UTILITIES
+|--------------------------------------------------------------------------
+*/
+
+/* --- Base Body Styles (Default: Left-aligned/Artifacts Page) --- */
 body {
     background-color: var(--secondary-color);
     color: var(--text-dark);
     line-height: 1.6;
+    min-height: 100vh;
+    width: 100%;
+    margin: 0;
+    padding: 0;
+    display: block; /* Ensures default left-alignment */
+    text-align: left;
 }
 
+/* --- Centering Utility (For 'Contribute' Page) --- */
+.centered-page {
+    display: flex;
+    flex-direction: column; 
+    align-items: center; /* Centers block-level children (header, main) horizontally */
+}
+
+/* --- Screen Reader Only Utility --- */
+.sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border-width: 0;
+}
+
+/* --- General Separator --- */
 .separator {
     border: 0;
     height: 1px;
@@ -31,7 +88,13 @@ body {
     width: 90%;
 }
 
-/* --- 1. Header & Navigation --- */
+/*
+|--------------------------------------------------------------------------
+| 3. COMPONENTS
+|--------------------------------------------------------------------------
+*/
+
+/* --- Component: Header --- */
 .header {
     display: flex;
     justify-content: space-between;
@@ -39,8 +102,10 @@ body {
     padding: 15px 5%;
     background-color: var(--card-bg);
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    width: 100%; /* Important for centered-page layout */
 }
 
+/* --- Component: Logo --- */
 .logo {
     font-size: 1.5rem;
     font-weight: 800;
@@ -48,6 +113,7 @@ body {
     color: var(--primary-color);
 }
 
+/* --- Component: Navigation --- */
 .nav a {
     text-decoration: none;
     color: var(--text-dark);
@@ -55,6 +121,7 @@ body {
     font-weight: 600;
 }
 
+/* --- Component: Buttons (.btn) --- */
 .btn {
     padding: 10px 20px;
     border: none;
@@ -64,33 +131,38 @@ body {
     transition: background-color 0.3s;
 }
 
+/* -- Modifier: Primary Button -- */
 .btn-primary {
     background-color: var(--primary-color);
     color: white;
 }
-
 .btn-primary:hover {
-    background-color: #0056b3;
+    background-color: #004b95;
 }
 
-/* --- 2. Hero Section --- */
-.hero-section {
-    text-align: center;
-    padding: 80px 5% 40px;
+/* -- Modifier: Danger Button -- */
+.btn-danger {
+    background: #c62828;
+    color: white;
+    padding: 10px 20px;
+    border-radius: 8px;
 }
 
-.hero-title {
-    font-size: 3rem;
-    font-weight: 800;
-    margin-bottom: 10px;
+/* -- Modifier: Ghost Button -- */
+.btn-ghost { 
+    background: transparent; 
+    border: 1px solid #e6e9ee; 
+    color: var(--text-dark); 
+    padding: 8px 12px; 
+    border-radius: 6px; 
+    font-weight: 700; 
+    cursor: pointer; 
+}
+.btn-ghost:hover { 
+    background: rgba(0,0,0,0.03); 
 }
 
-.hero-subtitle {
-    font-size: 1.25rem;
-    color: var(--text-light);
-    margin-bottom: 30px;
-}
-
+/* --- Component: Search Container --- */
 .search-container {
     display: flex;
     justify-content: center;
@@ -98,7 +170,7 @@ body {
     margin: 0 auto;
     box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
     border-radius: 8px;
-    overflow: hidden; /* Ensures borders/shadows are clean */
+    overflow: hidden;
 }
 
 .search-input {
@@ -116,25 +188,11 @@ body {
     padding: 15px 30px;
     font-size: 1rem;
 }
-
-.search-tip {
-    display: block;
-    margin-top: 15px;
-    color: var(--text-light);
-    font-size: 0.9rem;
+.btn-search:hover {
+    background-color: #004b95;
 }
 
-/* --- 3. Models Grid --- */
-.models-section {
-    padding: 20px 5%;
-}
-
-.section-heading {
-    font-size: 2rem;
-    margin-bottom: 30px;
-    font-weight: 600;
-}
-
+/* --- Component: Model Card --- */
 .models-grid {
     display: grid;
     /* Responsive layout: 4 columns on large screens */
@@ -142,93 +200,43 @@ body {
     gap: 30px;
 }
 
-/* --- Model Card Style --- */
 .model-card {
     background-color: var(--card-bg);
     border-radius: 8px;
     padding: 20px;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
     transition: transform 0.2s, box-shadow 0.2s;
-    min-height: 180px; /* Ensures consistent size */
+    min-height: 180px;
     display: flex;
     flex-direction: column;
+    align-items: flex-start; 
+    text-align: left;
 }
-
 .model-card:hover {
     transform: translateY(-5px);
     box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
 }
-
-.card-header {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    margin-bottom: 15px;
-}
-
-.model-name {
-    font-size: 1.3rem;
-    font-weight: 700;
-    color: var(--primary-color);
-    margin-bottom: 6px;
-}
-
-.model-left {
-    display: flex;
-    flex-direction: column;
-    width: 100%;
-}
-
-.model-meta-wrap {
-    display: flex;
-    flex-direction: column;
-    width: 100%;
-}
-
-.model-id {
-    background: transparent;
-    padding: 0;
-    border-radius: 0;
-    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, "Roboto Mono", monospace;
-    font-size: 0.8rem;
-    color: var(--text-dark);
-    margin-bottom: 10px;
-}
-
-
-.type-icon { width:44px; height:44px; border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:1.05rem; background: linear-gradient(180deg,#f8fbff,#ffffff); color:var(--primary-color); box-shadow:0 2px 6px rgba(0,0,0,0.04); margin-right:8px; }
-
-.type-badge { padding:4px 8px; border-radius:6px; font-weight:700; font-size:0.7rem; margin-left:0; }
-.type-model { background:#E0E7FF; color:#3730A3; }
-.type-dataset { background:#FEF9C3; color:#854D0E; }
-.type-code { background:#DCFCE7; color:#166534; }
-
-/* Actions */
-.card-actions { margin-top:auto; display:flex; gap:8px; justify-content:flex-start; }
-.btn-ghost { background:transparent; border:1px solid #e6e9ee; color:var(--text-dark); padding:8px 12px; border-radius:6px; font-weight:700; cursor:pointer; }
-.btn-ghost:hover { background:rgba(0,0,0,0.03); }
-
-/* small loading visual */
-.model-card.loading { opacity:0.95; filter:grayscale(6%); }
-
-/* ensure trunctation and tooltip are visible */
-.truncated-name {
-    max-width: 100%;
-    word-wrap: break-word;
-    overflow-wrap: break-word;
-    white-space: normal;
-    line-height: 1.3;
-    word-break: break-all;
-}
-
-/* minor spacing tweaks for compact cards */
-.model-desc { margin-top:10px; color:var(--text-light); font-size:0.95rem; }
-.model-meta { display:flex; gap:10px; align-items:center; font-size:0.85rem; color:var(--text-light); flex-direction: column; align-items: flex-start; }
-
 .model-card.clickable { cursor: pointer; }
-.model-card { align-items: flex-start; text-align: left; }
+.model-card.loading { opacity: 0.95; filter: grayscale(6%); }
 
-/* modal / fullscreen styles (minimal, left-aligned content) */
+/* -- Card Elements -- */
+.model-name {word-break: break-all; overflow-wrap: break-word; font-size: 1.3rem; font-weight: 700; color: var(--primary-color); margin-bottom: 6px; }
+.model-id { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, "Roboto Mono", monospace; font-size: 0.8rem; color: var(--text-dark); margin-bottom: 5px; width: 100%; }
+.model-desc { margin-top: 10px; color: var(--text-light); font-size: 0.95rem; }
+.model-meta { display: flex; gap: 10px; align-items: flex-start; font-size: 0.85rem; color: var(--text-light); flex-direction: column; width: 100%; }
+.card-actions { margin-top: auto; display: flex; gap: 8px; justify-content: flex-start; flex-direction: column; width: 100%; }
+
+/* -- Card Type Badges/Icons -- */
+.type-icon { width:44px; height:44px; border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:1.05rem; background: linear-gradient(180deg,#f8fbff,#ffffff); color:var(--primary-color); box-shadow:0 2px 6px rgba(0,0,0,0.04); margin-right:8px;}
+.type-badge { padding:4px 8px; border-radius:6px; font-weight:700; font-size:0.7rem; margin-left:0; width: fit-content; display: flex; align-items: block; gap:6px; margin-bottom: 10px; }
+.type-model { background: #E0E7FF; color: #3730A3; }
+.type-dataset { background: #FEF9C3; color: #854D0E; }
+.type-code { background: #DCFCE7; color: #166534; }
+
+
+
+
+/* --- Component: Modal --- */
 .modal-overlay {
     position: fixed;
     inset: 0;
@@ -239,7 +247,6 @@ body {
     z-index: 1200;
     padding: 24px;
 }
-
 .modal-content {
     background: var(--card-bg);
     color: var(--text-dark);
@@ -254,45 +261,103 @@ body {
     gap: 12px;
     align-items: flex-start;
 }
-.model-card.loading { opacity:0.9; filter:grayscale(8%); }
 .modal-header { width:100%; display:flex; justify-content:space-between; align-items:center; }
 .modal-title { margin:0; font-size:1.4rem; }
 .close-btn { background:transparent; border:none; font-size:1.6rem; cursor:pointer; color:var(--text-dark); }
-
-/* modal body details */
 .modal-body p { margin: 8px 0; color: var(--text-dark); }
-.modal-id { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, "Roboto Mono", monospace; background:transparent; padding:0; }
 
 
+/*
+|--------------------------------------------------------------------------
+| 4. PAGE-SPECIFIC STYLES
+|--------------------------------------------------------------------------
+*/
+
+/* --- Section: Home Page (Hero & Models) --- */
+
+.hero-section {
+    text-align: center;
+    padding: 80px 5% 40px;
+}
+.hero-title { font-size: 3rem; font-weight: 800; margin-bottom: 10px; }
+.hero-subtitle { font-size: 1.25rem; color: var(--text-light); margin-bottom: 30px; }
+.search-tip { display: block; margin-top: 15px; color: var(--text-light); font-size: 0.9rem; }
+.models-section { padding: 20px 5%; }
+.section-heading { font-size: 2rem; margin-bottom: 30px; font-weight: 600; }
 
 
+/* --- Section: Contribute Page (when .centered-page is active) --- */
 
-
-
-/* keep responsive tweaks */
-@media (max-width:640px) {
-    .truncated-name { max-width:180px; }
-    .type-icon { width:40px; height:40px; font-size:1rem; }
+/* Constrain the main content width and apply card styling */
+.contribution-section { 
+    width: 100%;
+    max-width: 1000px;
+    padding: 40px;
+    margin-top: 20px;
+    margin-bottom: 40px;
+    background-color: var(--card-bg); 
+    border-radius: 8px; 
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1); 
+    text-align: center; 
+}
+.contribution-title {
+    color: var(--text-dark); 
+    font-weight: 800;
+    margin-bottom: 10px;
+}
+.contribution-subtitle {
+    font-size: 1.1em;
+    color: var(--text-light);
 }
 
-/* Make page full-width and left-oriented */
-body {
-    width: 100%;
-    margin: 0;
-    padding: 0;
-    display: block;
+/* -- Form elements -- */
+.contribution-form {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    margin-top: 30px;
     text-align: left;
 }
+.form-group {
+    display: flex;
+    flex-direction: column;
+}
 
-/* Full-width content */
+/* -- Input/Select Styling -- */
+input[type="url"], 
+select {
+    width: 100%;
+    padding: 12px;
+    margin-top: 8px;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    font-size: 1em;
+    box-sizing: border-box;
+    transition: border-color 0.3s, box-shadow 0.3s;
+}
+
+/* -- Focus State for Input/Select -- */
+input[type="url"]:focus, 
+select:focus {
+    border-color: #007bff; 
+    box-shadow: 0 0 0 0.2rem var(--focus-glow); 
+    outline: none;
+}
+
+
+/* --- Section: Artifact Detail Page (Full-width content) --- */
+
 .artifact-container {
     max-width: 100%;
     width: 100%;
     margin: 0;
     padding: 20px 40px;
 }
-
-/* Allow content to span full width */
+.artifact-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
 .artifact-header,
 .score-section,
 .readme-section,
@@ -300,74 +365,35 @@ body {
     width: 100%;
 }
 
-/* Net Score label */
-.score-section {
-    text-align: center;
-    width: 100%;
-    margin: 40px 0;
-}
+/* -- Score Display -- */
+.score-section { text-align: center; width: 100%; margin: 40px 0; }
+.score-label { font-size: 14px; font-weight: 600; color: #444; margin-bottom: 5px; display: block; text-align: center; }
+.score-value { font-size: 28px; padding: 10px 14px; border-radius: 8px; background: #f3f3f3; font-weight: 700; display: inline-block; }
+.score-dropdown { margin-top: 15px; display: inline-block; }
+.score-dropdown summary { cursor: pointer; font-weight: 600; }
 
-/* Net Score label */
-.score-label {
-    font-size: 14px;
-    font-weight: 600;
-    color: #444;
-    margin-bottom: 5px;
-    display: block;
-    text-align: center; /* ensure label is centered */
-}
+/* -- Readme/Delete -- */
+.readme-box { padding: 1rem; background: #f4f4f4; border-radius: 6px; white-space: pre-wrap; }
+.delete-section { margin-top: 3rem; text-align: center; }
+.delete-warning { margin-top: 10px; color: #c62828; font-weight: bold; }
 
-/* Smaller, centered Net Score */
-.score-value {
-    font-size: 28px;
-    padding: 10px 14px;
-    border-radius: 8px;
-    background: #f3f3f3;
-    font-weight: 700;
-    display: inline-block; /* keeps width small but centered */
-}
+/*
+|--------------------------------------------------------------------------
+| 5. MEDIA QUERIES
+|--------------------------------------------------------------------------
+*/
 
-/* Center the subscores dropdown */
-.score-dropdown {
-    margin-top: 15px;
-    display: inline-block; /* centers inside score-section */
-}
+@media (max-width: 640px) {
+    /* Adjustments for Model Cards on small screens */
+    .truncated-name { max-width: 180px; }
+    .type-icon { width: 40px; height: 40px; font-size: 1rem; }
 
-
-.artifact-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
-
-
-
-.score-dropdown summary {
-    cursor: pointer;
-    font-weight: 600;
-}
-
-.readme-box {
-    padding: 1rem;
-    background: #f4f4f4;
-    border-radius: 6px;
-    white-space: pre-wrap;
-}
-
-.delete-section {
-    margin-top: 3rem;
-    text-align: center;
-}
-
-.btn-danger {
-    background: #c62828;
-    color: white;
-    padding: 10px 20px;
-    border-radius: 8px;
-}
-
-.delete-warning {
-    margin-top: 10px;
-    color: #c62828;
-    font-weight: bold;
+    /* Adjustments for general padding on small screens */
+    .header,
+    .hero-section,
+    .models-section,
+    .artifact-container {
+        padding-left: 15px;
+        padding-right: 15px;
+    }
 }

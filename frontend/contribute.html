@@ -3,25 +3,25 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <body class="centered-page"></body>
     <title>SecureModelHub | Contribute</title>
     <link rel="stylesheet" href="/style.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
 </head>
+
 <body>
     
     <header class="header">
         <a href="home.html" class="logo">SecureModelHub</a>
         <nav class="nav">
-            <!-- Link back to home/models page -->
             <a href="home.html" class="nav-link">Models</a>
             <a href="docs.html" class="nav-link">Docs</a>
         </nav>
-        <!-- Link back to home/models page -->
         <a href="home.html" class="btn btn-primary">Back to Hub</a>
     </header>
 
-    <section class="contribution-section">
+    <main class="contribution-section">
         <h1 class="contribution-title">Contribute a New AI Artifact</h1>
         <p class="contribution-subtitle">Please provide the necessary details below. Artifacts can be Models, Datasets, or Code.</p>
         
@@ -43,15 +43,13 @@
             </div>
             
             <button type="submit" id="submitButton" class="btn btn-primary submit-btn">
-                <i class="fas fa-upload"></i> Submit Artifact
+                <i class="fas fa-upload" aria-hidden="true"></i> Submit Artifact
             </button>
             
-            <!-- Message container for success/error messages -->
             <div id="messageContainer" class="message-container hidden"></div>
         </form>
-    </section>
+    </main>
 
-    <!-- Includes common style file -->
     <script src="contribute.js"></script>
 </body>
 </html>
