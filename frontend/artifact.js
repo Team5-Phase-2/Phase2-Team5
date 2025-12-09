@@ -82,13 +82,13 @@ async function loadReadme(repoUrl) {
 document.getElementById("deleteBtn").onclick = async () => {
     if (!confirm("Are you ABSOLUTELY sure? This cannot be undone.")) return;
 
-    const res = await fetch(`${API_BASE_URL}/artifact/${artifactType}/${artifactId}`, {
+    const res = await fetch(`${API_BASE_URL}/artifacts/${artifactType}/${artifactId}`, {
         method: "DELETE"
     });
 
     if (res.status === 200) {
         alert("Artifact deleted permanently.");
-        window.location.href = "/index.html";
+        window.location.href = "/home.html";
     } else {
         alert("Delete failed.");
     }

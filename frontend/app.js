@@ -168,21 +168,31 @@ function createModelCard(model, details = { rating: 'N/A', cost: 0, isLicensed: 
     const ratingNum = (typeof details.rating === 'number') ? Math.round(details.rating) : null;
 
     card.innerHTML = `
-        <div class="card-header">
-            <h3 class="model-name truncated-name" title="${escapeHtml(model.name || '')}">${escapeHtml(model.name || 'Untitled')}</h3>
+    <div class="card-header">
+        <h3 class="model-name truncated-name" title="${escapeHtml(model.name || '')}">
+            ${escapeHtml(model.name || 'Untitled')}
+        </h3>
+
+        <div class="model-meta">
             <code class="model-id">ID:${escapeHtml(model.id || '')}</code>
-            <span class="type-badge type-${escapeHtml(typeKey)}">${escapeHtml(typeKey).toUpperCase()}</span>
+            <div>
+                <span class="type-badge type-${escapeHtml(typeKey)}">
+                    ${escapeHtml(typeKey).toUpperCase()}
+                </span>
+            </div>
         </div>
+    </div>
 
-        <div class="card-actions">
-            <button class="btn btn-ghost btn-details" data-id="${escapeHtml(model.id || '')}">Details</button>
+    <div class="card-actions-line">
+        <button class="btn btn-ghost btn-details" data-id="${escapeHtml(model.id || '')}">Details</button>
 
-            <button class="btn btn-primary btn-artifact" 
-                onclick="window.location.href='artifact.html?id=${escapeHtml(model.id)}&type=${escapeHtml(typeKey)}'">
-                View Artifact
-            </button>
-        </div>
-    `;
+        <button class="btn btn-primary btn-artifact" 
+            onclick="window.location.href='artifact.html?id=${escapeHtml(model.id)}&type=${escapeHtml(typeKey)}'">
+            View Artifact
+        </button>
+    </div>
+`;
+
 
     return card;
 }
