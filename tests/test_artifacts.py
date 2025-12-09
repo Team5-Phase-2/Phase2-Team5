@@ -3,6 +3,7 @@ import json
 import hashlib
 import boto3
 from moto import mock_aws
+os.environ["REGISTRY_BUCKET"] = "test-registry-bucket"
 from backend.Artifacts.Artifacts import lambda_handler
 
 BUCKET = "test-registry-bucket"
@@ -20,7 +21,7 @@ def _upload_artifacts(s3, artifacts):
 
 @mock_aws
 def test_list_all_artifacts():
-    os.environ["REGISTRY_BUCKET"] = BUCKET
+    import boto3
     s3 = boto3.client("s3", region_name="us-east-2")
     s3.create_bucket(Bucket=BUCKET, CreateBucketConfiguration={"LocationConstraint": "us-east-2"})
 
@@ -37,7 +38,7 @@ def test_list_all_artifacts():
         s3.put_object(Bucket=BUCKET, Key=key, Body=json.dumps(metadata))
 
     event = {
-        "body": json.dumps({"name": "*", "types": []}),
+        "body": json.dumps([{"name": "*", "types": []}]),
         "headers": {},
     }
     response = lambda_handler(event, None)
@@ -60,7 +61,7 @@ def test_filter_by_type_and_name():
     s3.put_object(Bucket=BUCKET, Key=key, Body=json.dumps(metadata))
 
     event = {
-        "body": json.dumps({"name": "Test Dataset", "types": ["dataset"]}),
+        "body": json.dumps([{"name": "Test Dataset", "types": ["dataset"]}]),
         "headers": {},
     }
     response = lambda_handler(event, None)
@@ -81,7 +82,7 @@ def test_filter_multiple_types():
     artifacts = {"model": "Model A", "dataset": "Dataset A", "code": "Code A"}
     _upload_artifacts(s3, artifacts)
 
-    event = {"body": json.dumps({"name": "*", "types": ["model", "dataset"]}), "headers": {}}
+    event = {"body": json.dumps([{"name": "*", "types": ["model", "dataset"]}]), "headers": {}}
     response = lambda_handler(event, None)
     body = json.loads(response["body"])
 
@@ -97,7 +98,7 @@ def test_filter_type_excludes_unrelated():
     artifacts = {"model": "Model X", "dataset": "Dataset Y", "code": "Code Z"}
     _upload_artifacts(s3, artifacts)
 
-    event = {"body": json.dumps({"name": "*", "types": ["code"]}), "headers": {}}
+    event = {"body": json.dumps([{"name": "*", "types": ["code"]}]), "headers": {}}
     response = lambda_handler(event, None)
     body = json.loads(response["body"])
 
@@ -112,7 +113,7 @@ def test_no_artifacts_found():
     s3.create_bucket(Bucket=BUCKET, CreateBucketConfiguration={"LocationConstraint": "us-east-2"})
 
     # Do NOT upload any artifacts
-    event = {"body": json.dumps({"name": "*", "types": ["model", "dataset"]}), "headers": {}}
+    event = {"body": json.dumps([{"name": "*", "types": ["model", "dataset"]}]), "headers": {}}
     response = lambda_handler(event, None)
     assert response["statusCode"] == 200
     body = json.loads(response["body"])
@@ -123,7 +124,7 @@ def test_no_artifacts_found():
 @mock_aws
 def test_missing_env_var():
     os.environ["REGISTRY_BUCKET"] = ""
-    event = {"body": json.dumps({"name": "*", "types": ["model"]}), "headers": {}}
+    event = {"body": json.dumps([{"name": "*", "types": ["model"]}]), "headers": {}}
     # Do NOT set REGISTRY_BUCKET
     response = lambda_handler(event, None)
     assert response["statusCode"] == 500
@@ -143,7 +144,7 @@ def test_invalid_json_body():
 @mock_aws
 def test_invalid_name_empty():
     os.environ["REGISTRY_BUCKET"] = BUCKET
-    event = {"body": json.dumps({"name": "", "types": ["model"]}), "headers": {}}
+    event = {"body": json.dumps([{"name": "", "types": ["model"]}]), "headers": {}}
     response = lambda_handler(event, None)
     assert response["statusCode"] == 400
     assert "name" in response["body"].lower()
@@ -152,7 +153,7 @@ def test_invalid_name_empty():
 @mock_aws
 def test_invalid_types_not_list():
     os.environ["REGISTRY_BUCKET"] = BUCKET
-    event = {"body": json.dumps({"name": "*", "types": "model"}), "headers": {}}
+    event = {"body": json.dumps([{"name": "*", "types": "model"}]), "headers": {}}
     response = lambda_handler(event, None)
     assert response["statusCode"] == 400
     assert "types" in response["body"].lower()
@@ -161,7 +162,7 @@ def test_invalid_types_not_list():
 @mock_aws
 def test_invalid_type_values():
     os.environ["REGISTRY_BUCKET"] = BUCKET
-    event = {"body": json.dumps({"name": "*", "types": ["invalid_type"]}), "headers": {}}
+    event = {"body": json.dumps([{"name": "*", "types": ["invalid_type"]}]), "headers": {}}
     response = lambda_handler(event, None)
     assert response["statusCode"] == 400
     assert "invalid" in response["body"].lower()

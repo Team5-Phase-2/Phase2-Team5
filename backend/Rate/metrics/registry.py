@@ -14,7 +14,7 @@ from .dataset_code import dataset_and_code_score
 from .dataset_quality import dataset_quality
 from .code_quality import code_quality
 from .reviewedness import reviewedness
-from ..reproducibility import reproducibility
+from .reproducibility import reproducibility
 
 
 # List of (metric_key, metric_function) consumed by the runner
