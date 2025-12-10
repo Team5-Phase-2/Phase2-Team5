@@ -114,6 +114,7 @@ def run_all_metrics(event, context):
             
 
         except Exception as e:
+            return "TIME OUT!"
             code_url = None
             dataset_url = None
 

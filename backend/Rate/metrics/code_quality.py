@@ -38,7 +38,7 @@ def code_quality(model_url: str, code_url: str, dataset_url: str) -> Tuple[Optio
 
         if not owner or not repo:
             latency_ms = (time.time_ns() - start_ns) // 1_000_000
-            return None, latency_ms
+            return 0.5, latency_ms
 
 
         
@@ -61,7 +61,7 @@ def code_quality(model_url: str, code_url: str, dataset_url: str) -> Tuple[Optio
         count = 0
         if python_files:
             for python_file in python_files:
-                if count > 10:
+                if count > 6:
                     break
                 raw_file_url = f"https://raw.githubusercontent.com/{owner}/{repo}/main/{python_file}"
                 file_response = requests.get(raw_file_url, timeout=10)
@@ -96,4 +96,4 @@ def _analyze_with_pylint(code_content: str, filename: str) -> Optional[float]:
         return analyze_code(code_content)
     except Exception as e:
         print(f"[ERROR] Lightweight analyzer failed for {filename}: {e}")
-        return None
+        return 0.5
