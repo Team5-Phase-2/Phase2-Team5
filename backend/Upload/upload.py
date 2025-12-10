@@ -13,14 +13,11 @@ Notes:
 import json
 import zipfile
 import io
-from huggingface_hub import snapshot_download
-import uuid
 import hashlib
 import base64
-from datetime import datetime
 import boto3
-import requests #NEW
-from urllib.parse import urlparse #NEW
+import requests
+from urllib.parse import urlparse
 from botocore.exceptions import ClientError
 import os
 
@@ -78,242 +75,121 @@ def lambda_handler(event, context):
     numeric_hash = int(hash_object.hexdigest(), 16)
     model_id = numeric_hash % 9999999967
 
-    #CHANGES START HERE---------------------------------------------
-
     # URLs to store
     zip_download_url = None
-    readme_download_url = None
 
     parsed = urlparse(model_url)
     host = parsed.netloc.lower()
 
     # =====================================================================
-    # 1. FULL ZIP DOWNLOAD 
+    # 1. FIRE OFF EC2 FULL DOWNLOAD
     # =====================================================================
-    try:
-        path_parts = [p for p in parsed.path.split("/") if p]
+    
+    ssm = boto3.client("ssm")
+    EC2_ID = os.environ.get("EC2_ID")
+    SCRIPT_PATH = os.eviron.get("DOWNLOAD_SCRIPT_PATH")
 
-        if "huggingface.co" in host:
-            '''
-            local_dir = f"/tmp/{model_id}_repo"
-            zip_path = f"/tmp/{model_id}.zip"
+    ssm.send_command(
+        InstanceIds=[EC2_ID],
+        DocumentName="AWS-RunShellScript",
+        Parameters={
+            "commands": [
+                f"python3 {SCRIPT_PATH} --url {model_url} --artifact_id {model_id} --artifact_type {artifact_type}"
+            ]
+        }
+    )
+    
 
-            path = parsed.path.strip("/")
-            parts = path.split("/")
+    # =====================================================================
+    # 2. CREATE PLACEHOLDER S3 OBJECT FOR DOWNLOAD URL GENERATION
+    # =====================================================================
+    
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, mode="w", compression=zipfile.ZIP_DEFLATED) as zf:
+        pass  # No files added → valid empty ZIP
+    buf.seek(0)
 
-            # Determine type + repo_id
-            if parts[0] == "datasets":
-                repo_type = "dataset"
-                repo_id = "/".join(parts[1:3])
-            else:
-                repo_type = "model"
-                repo_id = "/".join(parts[0:2])
+    zip_key = f"artifacts/{artifact_type}/{model_id}/artifact.zip"
+    s3.put_object(
+        Bucket=s3_bucket,
+        Key=zip_key,
+        Body=buf.getvalue(),
+        ContentType="application/zip"
+    )
 
-            zip_key = f"artifacts/{artifact_type}/{model_id}/{name}.zip"
-            # Download using snapshot_download (cached download, auth via token)
-            downloaded_path = snapshot_download(
-                repo_id=repo_id,
-                repo_type=repo_type,
-                local_dir="/tmp/repo",
-                cache_dir="/tmp/huggingface/hub",
-                token=os.environ.get("HF_TOKEN", None),
-                resume_download=True
-            )
+    zip_download_url = s3.generate_presigned_url(
+        "get_object",
+        Params={"Bucket": s3_bucket, "Key": zip_key},
+        ExpiresIn=3600,
+    )
 
-            print(f"ZIP created at: {zip_path}")
+    # =====================================================================
+    # 3. README-ONLY DOWNLOAD
+    # =====================================================================
+    path_parts = [p for p in parsed.path.split("/") if p]
 
-            # Upload to S3
-            zip_key = f"artifacts/{artifact_type}/{model_id}/artifact.zip"
-            s3.upload_file(
-                Filename=zip_path,
-                Bucket=s3_bucket,
-                Key=zip_key,
-                ExtraArgs={"ContentType": "application/zip"}
-            )
+    # -------------------- GitHub README --------------------
+    if "github.com" in host:
+        owner, repo = path_parts[0], path_parts[1].replace(".git", "")
+        api_url = f"https://api.github.com/repos/{owner}/{repo}/readme"
+        print("GITHUB README:", api_url)
 
-            # Upload the ZIP to S3
-            s3.upload_file(
-                Filename=zip_path,
-                Bucket=s3_bucket,
-                Key=zip_key,
-                ExtraArgs={"ContentType": "application/zip"},
-            )
-            print(f"Uploaded ZIP to s3://{s3_bucket}/{zip_key}")
+        gh = requests.get(api_url, timeout=(3, 12), headers={"User-Agent": "Mozilla/5.0"})
+        gh.raise_for_status()
 
-            # Generate presigned download URL
-            zip_download_url = s3.generate_presigned_url(
-                "get_object",
-                Params={"Bucket": s3_bucket, "Key": zip_key},
-                ExpiresIn=3600,
-            )
+        info = gh.json()
+        readme_bytes = base64.b64decode(info["content"])
+        readme_name = info.get("name", "README")
 
-            print(f"Download URL: {zip_download_url}")
+        readme_key = f"artifacts/{artifact_type}/{model_id}/{readme_name}"
+        s3.put_object(
+            Bucket=s3_bucket,
+            Key=readme_key,
+            Body=readme_bytes,
+            ContentType="text/plain"
+        )
 
-            # Clean up /tmp
-            try:
-                os.remove(zip_path)
-                print("Temporary ZIP cleaned up.")
-            except Exception as cleanup_e:
-                print(f"Warning: failed to remove temporary ZIP: {cleanup_e}")
-            '''
-            path = parsed.path.strip("/")
-            parts = path.split("/")
+    # -------------------- HuggingFace README --------------------
+    elif "huggingface.co" in host:
+        path = parsed.path.strip("/")
+        parts = path.split("/")
 
-            # Determine type + repo_id
-            if parts[0] == "datasets":
-                repo_type = "datasets"
-                repo_id = "/".join(parts[1:3])
-            else:
-                repo_type = "models"
-                repo_id = "/".join(parts[0:2])
+        if parts[0] == "datasets":
+            repo_type = "datasets"
+            repo_id = "/".join(parts[1:3])   # owner/name
+        else:
+            repo_type = "models"
+            repo_id = "/".join(parts[0:2])   # owner/name
 
-            # Get SHA
-            api_url = f"https://huggingface.co/api/{repo_type}/{repo_id}"
-            info = requests.get(api_url, timeout=(3, 10), headers={"User-Agent": "Mozilla/5.0"}).json()
-            sha = info.get("sha")
+        api_url = f"https://huggingface.co/api/{repo_type}/{repo_id}"
+        print("HF README API:", api_url)
 
-            # Download snapshot.zip directly
-            if artifact_type == "model":
-                file_path = "config.json"
-                zip_url = f"https://huggingface.co/{repo_id}/resolve/{sha}/{file_path}"
-            else :
-                file_path = "README.md"
-                zip_url = f"https://huggingface.co/datasets/{repo_id}/resolve/{sha}/{file_path}"
+        info = requests.get(api_url, timeout=(3, 12), headers={"User-Agent": "Mozilla/5.0"}).json()
+        sha = info.get("sha")
+        siblings = info.get("siblings", [])
 
-            print("HF SNAPSHOT:", zip_url)
+        readme_file = None
+        for s in siblings:
+            if "readme" in s.get("rfilename", "").lower():
+                readme_file = s["rfilename"]
+                break
 
-            r = requests.get(zip_url, timeout=(10, 60), headers={"User-Agent": "Mozilla/5.0", "Authorization" : f"Bearer {os.environ.get("HF_TOKEN", None)}" })
+        if readme_file:
+            raw_url = f"https://huggingface.co/{repo_id}/resolve/{sha}/{readme_file}"
+            r = requests.get(raw_url, timeout=(3, 12), headers={"User-Agent": "Mozilla/5.0"})
             r.raise_for_status()
 
-            zip_key = f"artifacts/{artifact_type}/{model_id}/artifact.zip"
-            s3.put_object(
-                Bucket=s3_bucket,
-                Key=zip_key,
-                Body=r.content,
-                ContentType="application/zip"
-            )
-
-            zip_download_url = s3.generate_presigned_url(
-                "get_object",
-                Params={"Bucket": s3_bucket, "Key": zip_key},
-                ExpiresIn=3600,
-            )
-
-
-        # -------------------- GitHub ZIP --------------------
-        elif "github.com" in host:
-            owner, repo = path_parts[0], path_parts[1].replace(".git", "")
-
-            # Use API to get default branch
-            api_url = f"https://api.github.com/repos/{owner}/{repo}"
-            info = requests.get(api_url, timeout=(3, 10), headers={"User-Agent": "Mozilla/5.0"}).json()
-            branch = info.get("default_branch", "main")
-
-            zip_url = f"https://github.com/{owner}/{repo}/archive/refs/heads/{branch}.zip"
-            print("GITHUB ZIP:", zip_url)
-
-            r = requests.get(zip_url, timeout=(5, 30))
-            r.raise_for_status()
-
-            zip_key = f"artifacts/{artifact_type}/{model_id}/artifact.zip"
-            s3.put_object(
-                Bucket=s3_bucket,
-                Key=zip_key,
-                Body=r.content,
-                ContentType="application/zip"
-            )
-
-            zip_download_url = s3.generate_presigned_url(
-                "get_object",
-                Params={"Bucket": s3_bucket, "Key": zip_key},
-                ExpiresIn=3600,
-            )
-
-
-    except Exception as e:
-        print("ZIP download failed:", e)
-        zip_download_url = model_url
-
-    # =====================================================================
-    # 2. README-ONLY DOWNLOAD
-    # =====================================================================
-    try:
-        # -------------------- GitHub README --------------------
-        if "github.com" in host:
-            owner, repo = path_parts[0], path_parts[1].replace(".git", "")
-            api_url = f"https://api.github.com/repos/{owner}/{repo}/readme"
-            print("GITHUB README:", api_url)
-
-            gh = requests.get(api_url, timeout=(3, 12), headers={"User-Agent": "Mozilla/5.0"})
-            gh.raise_for_status()
-
-            info = gh.json()
-            readme_bytes = base64.b64decode(info["content"])
-            readme_name = info.get("name", "README")
-
-            readme_key = f"artifacts/{artifact_type}/{model_id}/{readme_name}"
+            readme_key = f"artifacts/{artifact_type}/{model_id}/{readme_file}"
             s3.put_object(
                 Bucket=s3_bucket,
                 Key=readme_key,
-                Body=readme_bytes,
+                Body=r.content,
                 ContentType="text/plain"
             )
-
-            readme_download_url = s3.generate_presigned_url(
-                "get_object",
-                Params={"Bucket": s3_bucket, "Key": readme_key},
-                ExpiresIn=3600,
-            )
-
-        # -------------------- HuggingFace README --------------------
-        elif "huggingface.co" in host:
-            path = parsed.path.strip("/")
-            parts = path.split("/")
-
-            if parts[0] == "datasets":
-                repo_type = "datasets"
-                repo_id = "/".join(parts[1:3])   # owner/name
-            else:
-                repo_type = "models"
-                repo_id = "/".join(parts[0:2])   # owner/name
-
-            api_url = f"https://huggingface.co/api/{repo_type}/{repo_id}"
-            print("HF README API:", api_url)
-
-            info = requests.get(api_url, timeout=(3, 12), headers={"User-Agent": "Mozilla/5.0"}).json()
-            sha = info.get("sha")
-            siblings = info.get("siblings", [])
-
-            readme_file = None
-            for s in siblings:
-                if "readme" in s.get("rfilename", "").lower():
-                    readme_file = s["rfilename"]
-                    break
-
-            if readme_file:
-                raw_url = f"https://huggingface.co/{repo_id}/resolve/{sha}/{readme_file}"
-                r = requests.get(raw_url, timeout=(3, 12), headers={"User-Agent": "Mozilla/5.0"})
-                r.raise_for_status()
-
-                readme_key = f"artifacts/{artifact_type}/{model_id}/{readme_file}"
-                s3.put_object(
-                    Bucket=s3_bucket,
-                    Key=readme_key,
-                    Body=r.content,
-                    ContentType="text/plain"
-                )
-
-                readme_download_url = s3.generate_presigned_url(
-                    "get_object",
-                    Params={"Bucket": s3_bucket, "Key": readme_key},
-                    ExpiresIn=3600,
-                )
-
-    except Exception as e:
-        print("README download failed:", e)
-        readme_download_url = None
     
-    #---------------------------------------------------------------
+    # =====================================================================
+    # 4. FORMATE RESPONSE
+    # =====================================================================
 
     #if no zip download url found then return model url
     if zip_download_url is None:
