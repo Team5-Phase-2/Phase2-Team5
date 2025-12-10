@@ -7,6 +7,11 @@ import backend.Health.health as health_module
 # ---------------------------------------------------------
 # Mock environment patch (logs + cloudwatch + LOG_GROUPS=1)
 # ---------------------------------------------------------
+@pytest.fixture(autouse=True)
+def aws_region(monkeypatch):
+    monkeypatch.setenv("AWS_DEFAULT_REGION", "us-east-1")
+
+
 with patch("backend.Health.health.boto3.client") as boto_client:
     boto_client.return_value = MagicMock()
     import backend.Health.health as health_module
