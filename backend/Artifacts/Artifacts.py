@@ -65,6 +65,11 @@ def lambda_handler(event, context):
           "statusCode": 400,
           "body": json.dumps({"error": "'types' must be an array."})
       }
+  
+  valid_types = {"model", "dataset", "code"}
+
+  if any(t not in valid_types for t in item["types"]):
+      return {"statusCode": 400, "body": json.dumps({"error": "invalid type value"})}
 
   # Handle pagination offset
   try:

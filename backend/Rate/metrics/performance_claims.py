@@ -11,7 +11,7 @@ from repo_fetch import download_hf_repo_subset, read_text_if_exists
 from perf_helper import has_real_metrics
 
 
-def performance_claims(model_url: str) -> Tuple[Optional[float], int]:
+def performance_claims(model_url: str, code_url: str, dataset_url: str) -> Tuple[Optional[float], int]:
     """Return (score, latency_ms) where score is 1.0 if numeric performance
     claims are present, otherwise 0.0.
     """

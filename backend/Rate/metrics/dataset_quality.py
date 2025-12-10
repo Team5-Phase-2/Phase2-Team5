@@ -12,7 +12,7 @@ from scoring import _hf_model_id_from_url
 from .utils import fetch_hf_readme_text
 
 
-def dataset_quality(model_url: str) -> Tuple[Optional[float], int]:
+def dataset_quality(model_url: str, code_url: str, dataset_url: str) -> Tuple[Optional[float], int]:
     """Compute a dataset-quality proxy for the given model repository.
 
     The heuristic looks for mentions of trusted datasets (e.g. Wikipedia,

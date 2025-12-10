@@ -11,7 +11,7 @@ from datetime import datetime
 from scoring import _hf_model_id_from_url
 
 
-def bus_factor(model_url: str) -> Tuple[Optional[float], int]:
+def bus_factor(model_url: str, code_url: str, dataset_url: str) -> Tuple[Optional[float], int]:
     """Return (score, latency_ms) representing project resilience.
 
     A higher score indicates more widespread use and recent maintenance,
