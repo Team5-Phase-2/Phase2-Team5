@@ -7,6 +7,9 @@ import backend.Health.health as health_module
 # ---------------------------------------------------------
 # Mock environment patch (logs + cloudwatch + LOG_GROUPS=1)
 # ---------------------------------------------------------
+with patch("backend.Health.health.boto3.client") as boto_client:
+    boto_client.return_value = MagicMock()
+    import backend.Health.health as health_module
 
 @pytest.fixture
 def mock_env_small():
@@ -16,8 +19,6 @@ def mock_env_small():
          patch("backend.Health.health.time.sleep", return_value=None):
 
         yield logs_mock, cw_mock
-
-
 
 
 # ---------------------------------------------------------
