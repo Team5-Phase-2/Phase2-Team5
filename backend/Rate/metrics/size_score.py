@@ -13,7 +13,7 @@ import time, requests, os, math
 from scoring import _hf_model_id_from_url
 
 
-def size_score(model_url: str) -> Tuple[Optional[float], int]:
+def size_score(model_url: str, code_url: str, dataset_url: str) -> Tuple[Optional[float], int]:
     """Compute a size-based score for model deployability.
 
     The function queries the Hugging Face model metadata to find weight files
@@ -105,15 +105,15 @@ def size_score(model_url: str) -> Tuple[Optional[float], int]:
 
         # Map total size to per-device suitability heuristics
         # Raspberry Pi
-        if gb < 0.2:
+        if gb <= 0.2:
             device_scores["raspberry_pi"] = 1.0
         elif gb < 0.5:
             device_scores["raspberry_pi"] = 0.8
-        elif gb < 1.0:
-            device_scores["raspberry_pi"] = 0.6
         elif gb < 2.0:
-            device_scores["raspberry_pi"] = 0.4
+            device_scores["raspberry_pi"] = 0.6
         elif gb < 4.0:
+            device_scores["raspberry_pi"] = 0.4
+        elif gb < 8.0:
             device_scores["raspberry_pi"] = 0.2
         else:
             device_scores["raspberry_pi"] = 0.0
@@ -123,9 +123,9 @@ def size_score(model_url: str) -> Tuple[Optional[float], int]:
             device_scores["jetson_nano"] = 1.0
         elif gb < 1.0:
             device_scores["jetson_nano"] = 0.75
-        elif gb < 2.0:
-            device_scores["jetson_nano"] = 0.5
         elif gb < 4.0:
+            device_scores["jetson_nano"] = 0.5
+        elif gb < 8.0:
             device_scores["jetson_nano"] = 0.25
         else:
             device_scores["jetson_nano"] = 0.0

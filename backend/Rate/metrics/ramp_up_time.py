@@ -12,7 +12,7 @@ import requests, math
 from scoring import _hf_model_id_from_url
 
 
-def ramp_up_time(model_url: str) -> Tuple[Optional[float], int]:
+def ramp_up_time(model_url: str, code_url: str, dataset_url: str) -> Tuple[Optional[float], int]:
     """Return (score, latency_ms).
 
     The function fetches model metadata from the HF API and computes a

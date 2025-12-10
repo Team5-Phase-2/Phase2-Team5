@@ -6,10 +6,10 @@ mapping pylint scores into a small normalized scale.
 
 from typing import Optional, Tuple
 import time, tempfile, subprocess, sys, os, requests
-from scoring import _hf_model_id_from_url
+from urllib.parse import urlparse
 
 
-def code_quality(model_url: str) -> Tuple[Optional[float], int]:
+def code_quality(model_url: str, code_url: str, dataset_url: str) -> Tuple[Optional[float], int]:
     """Return (score, latency_ms) assessing repository code quality.
 
     The function attempts to fetch Python example files from the model
@@ -20,44 +20,55 @@ def code_quality(model_url: str) -> Tuple[Optional[float], int]:
 
     start_ns = time.time_ns()
     try:
-        model_id = _hf_model_id_from_url(model_url)
-        api_url = f"https://huggingface.co/api/models/{model_id}"
-        response = requests.get(api_url, timeout=10)
+        parsed_url = urlparse(code_url)
+        if 'github.com' not in parsed_url.netloc:
+            latency_ms = (time.time_ns() - start_ns) // 1_000_000
+            return None, latency_ms
+        path_parts = [part for part in parsed_url.path.split('/') if part]
+        
+        # A standard GitHub repository URL is /owner/repo
+        
+        if len(path_parts) >= 2:
+            owner = path_parts[0]
+            repo = path_parts[1]
+            # Clean up the repo name if it ends with .git
+            if repo.endswith('.git'):
+                repo = repo[:-4]
+
+        if not owner or not repo:
+            latency_ms = (time.time_ns() - start_ns) // 1_000_000
+            return None, latency_ms
+
+
+        
+        contents_api_url = f"https://api.github.com/repos/{owner}/{repo}/contents"
+        response = requests.get(contents_api_url, timeout=10)
+        
         if response.status_code != 200:
+            print(f"Failed to fetch repo contents. Status: {response.status_code}")
             return None, (time.time_ns() - start_ns) // 1_000_000
 
-        metadata = response.json()
-        files_data = metadata.get("siblings", [])
-        config = metadata.get("config", {})
+        files_and_dirs = response.json()
 
-        # Collect Python files present in the repository
-        python_files = [f["rfilename"] for f in files_data if f.get("rfilename", "").endswith(".py")]
+        python_files = []
+        for item in files_and_dirs:
+            if isinstance(item, dict) and item.get("type") == "file" and item.get("name", "").endswith(".py"):
+                # item["path"] is the full path within the repo
+                python_files.append(item["path"])
 
         scores = []
         if python_files:
             for python_file in python_files:
-                file_url = f"https://huggingface.co/{model_id}/raw/main/{python_file}"
-                file_response = requests.get(file_url, timeout=10)
+                raw_file_url = f"https://raw.githubusercontent.com/{owner}/{repo}/main/{python_file}"
+                file_response = requests.get(raw_file_url, timeout=10)
                 if file_response.status_code == 200:
                     sc = _analyze_with_pylint(file_response.text, python_file)
+                    print(f"Pylint score for {python_file}: {sc}")
                     if sc is not None:
                         scores.append(sc)
         else:
-            # Fallback: attempt to lint a reference modeling file for the model type
-            model_type = config.get("model_type")
-            if model_type:
-                if model_type.endswith("_text"):
-                    model_type = model_type.replace("_text", "")
-                base_url = (
-                    "https://raw.githubusercontent.com/huggingface/"
-                    "transformers/main/src/transformers/models"
-                )
-                model_file = f"{base_url}/{model_type}/modeling_{model_type}.py"
-                file_response = requests.get(model_file, timeout=10)
-                if file_response.status_code == 200:
-                    sc = _analyze_with_pylint(file_response.text, f"modeling_{model_type}.py")
-                    if sc is not None:
-                        scores.append(sc)
+            print(f"Failed to fetch repo contents. Status: {response.status_code}")
+            return None, (time.time_ns() - start_ns) // 1_000_000
 
         score = sum(scores) / len(scores) if scores else 0
         latency_ms = (time.time_ns() - start_ns) // 1_000_000
@@ -88,6 +99,7 @@ def _analyze_with_pylint(code_content: str, filename: str) -> Optional[float]:
             text=True,
             timeout=30,
         )
+        print(result.stdout)
         return _parse_pylint_score(result.stdout)
 
     except subprocess.TimeoutExpired:
@@ -121,3 +133,46 @@ def _parse_pylint_score(output: str) -> Optional[float]:
             except (ValueError, IndexError):
                 continue
     return None
+
+
+if __name__ == "__main__":
+
+    test_code_url = "https://github.com/mv-lab/swin2sr"
+    
+    # The function requires model_url and dataset_url, but they are not used 
+    # in the current GitHub-focused logic, so we pass placeholders.
+    model_url_placeholder = "http://placeholder.co/model"
+    dataset_url_placeholder = "http://placeholder.co/dataset"
+    
+    print(f"\n--- Running Code Quality Analysis ---")
+    print(f"Target Repository: {test_code_url}")
+    
+    # --- Function Call ---
+    final_score, latency_ms = code_quality(
+        model_url=model_url_placeholder, 
+        code_url=test_code_url, 
+        dataset_url=dataset_url_placeholder
+    )
+    
+    # --- Results ---
+    print("\n--- Analysis Results ---")
+    if final_score is not None:
+        print(f"✅ Code Quality Score (Normalized): {final_score:.2f}")
+        print(f"⏱️ Total Latency: {latency_ms} ms")
+        
+        # Interpret the score based on your bucket mapping:
+        if final_score >= 1.0:
+            rating = "Excellent"
+        elif final_score >= 0.75:
+            rating = "Good"
+        elif final_score >= 0.5:
+            rating = "Acceptable"
+        elif final_score > 0.0:
+            rating = "Poor"
+        else:
+            rating = "No python files found or files had critical issues (score 0.0)"
+            
+        print(f"Rating: **{rating}**")
+        
+    else:
+        print(f"❌ Analysis Failed. Latency: {latency_ms} ms")

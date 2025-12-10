@@ -7,7 +7,7 @@ from urllib.parse import urlparse
 
 from .utils import query_genai, fetch_hf_readme_text
 
-def reproducibility(model_url: str) -> Tuple[Optional[float], int]:
+def reproducibility(model_url: str, code_url: str, dataset_url: str) -> Tuple[Optional[float], int]:
     """
     Evaluates the reproducibility of example code from a model's README.
     
