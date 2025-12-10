@@ -16,3 +16,5 @@ requests
 boto3
 moto
 
+selenium
+axe_selenium_python
