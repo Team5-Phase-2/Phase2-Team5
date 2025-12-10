@@ -149,7 +149,7 @@ def run_all_metrics(event, context):
 
     return output_payload
 
-'''
+
     try:
         # The next function should also be called synchronously to ensure a final
         # 201/202 status can be returned from the API Gateway chain.
@@ -183,4 +183,4 @@ def run_all_metrics(event, context):
             "statusCode": 500,
             "body": json.dumps({"error": "Internal error during final step handoff."})
         }
-    '''  
+    

@@ -15,7 +15,8 @@ def test_missing_metadata_returns_404():
     s3 = boto3.client("s3", region_name="us-east-1")
     s3.create_bucket(Bucket=bucket)
 
-    event = {"path": "/artifact/model/99999/rate"}
+    event = {"pathParameters": {"id": "99999"}}
+
     resp = lambda_handler(event, None)
     assert resp.get("statusCode") == 404
     body = json.loads(resp.get("body"))
@@ -50,7 +51,8 @@ def test_successful_return_200_and_schema():
     }
     s3.put_object(Bucket=bucket, Key=key, Body=json.dumps(metadata).encode("utf-8"))
 
-    event = {"path": f"/artifact/model/{model_id}/rate"}
+    event = {"pathParameters": {"id": model_id}}
+    
     resp = lambda_handler(event, None)
     assert resp.get("statusCode") == 200
     body = json.loads(resp.get("body"))
