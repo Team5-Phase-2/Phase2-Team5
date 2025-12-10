@@ -9,9 +9,9 @@ from typing import Optional, Tuple
 import time, requests
 from scoring import _hf_model_id_from_url
 from .utils import fetch_hf_readme_text
+import boto3
 
-
-def dataset_and_code_score(model_url: str) -> Tuple[Optional[float], int]:
+def dataset_and_code_score(model_url: str, code_url: str, dataset_url: str) -> Tuple[Optional[float], int]:
     """Return a combined dataset-and-code availability score and latency.
 
     Heuristics:
@@ -21,13 +21,23 @@ def dataset_and_code_score(model_url: str) -> Tuple[Optional[float], int]:
     """
 
     start_ns = time.time_ns()
+    if code_url != "NULL" and dataset_url != "NULL":
+        return 1.0, (time.time_ns() - start_ns) // 1_000_000
+
+
     try:
         model_id = _hf_model_id_from_url(model_url)
         if model_id.startswith("http"):
             return 0.0, (time.time_ns() - start_ns) // 1_000_000
 
-        dataset_available = False
-        code_available = False
+        if code_url != "NULL":
+            code_available = True
+        else:
+            code_available = False
+        if dataset_url != "NULL":
+            dataset_available = True
+        else:
+            dataset_available = False
 
         api = requests.get(f"https://huggingface.co/api/models/{model_id}", timeout=10)
         if api.status_code == 200:

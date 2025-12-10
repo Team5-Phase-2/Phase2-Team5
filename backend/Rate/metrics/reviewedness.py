@@ -6,7 +6,7 @@ import requests
 from typing import Tuple
 
 
-def reviewedness(model_url: str) -> Tuple[float, int]:
+def reviewedness(model_url: str, code_url: str, dataset_url: str) -> Tuple[float, int]:
     """
     Computes the reviewedness metric for a models GitHub repository, as required
     by the Phase 2 specification.

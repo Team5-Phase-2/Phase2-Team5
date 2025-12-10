@@ -11,7 +11,7 @@ from metrics.registry import METRIC_REGISTRY
 import json
 from run_metrics import calculate_net_score
 import boto3
-
+from metrics.utils import fetch_hf_readme_text
 
 lambda_client = boto3.client('lambda')
 
@@ -45,12 +45,73 @@ def run_all_metrics(event, context):
             "body": json.dumps({"error": f"Internal processing error: {str(e)}"})
         }
 
-    max_workers = 8
+
+    readme_text = fetch_hf_readme_text(model_url)
+    if readme_text is None:
+        return {
+            "statusCode": 500,
+            "body": json.dumps({"error": "Failed to fetch README text."})
+        }
+
+    try:
+        bedrock = boto3.client("bedrock-runtime", region_name="us-east-2")
+
+        prompt = f""" You are an expert analyst and trying to match HuggingFace models to their corresponding code and datasets.
+     
+        README:
+        {readme_text}
+
+        Task:
+        - Identify from the README the url of the github code that is linked to this model.
+        - Ensure the code url is valid. Attempt to return the url for the root directory.
+        - Identify from the README the url of the dataset that is linked to this model
+        - Respond in the following manner code_url, dataset_url
+        - If you cannot find these things, return that string as NULL
+        - Only respond with these things, and no other text. There is no need to label them either.
+        """
+
+        request_body = {
+            'messages': [
+                {
+                    'role': 'user',
+                    'content': [{'text': prompt}]
+                }
+            ],
+            'inferenceConfig': {
+                'maxTokens': 512,
+                'temperature': 0.7
+            }
+        }
+
+        response = bedrock.invoke_model(
+            modelId='us.amazon.nova-2-lite-v1:0',
+            body=json.dumps(request_body)
+        )
+
+        response_body = json.loads(response['body'].read())
+        content_list = response_body["output"]["message"]["content"]
+        # Extract the first text block
+        text_block = next((item for item in content_list if "text" in item), None)
+        if text_block is not None:
+            urls = text_block["text"]
+            urls = urls.split(",")
+            code_url = urls[0]
+            dataset_url = urls[1]
+        
+
+    except Exception as e:
+        code_url = None
+        dataset_url = None
+
+    print(f"Code URL: {code_url}")
+    print(f"Dataset URL: {dataset_url}")
+
+    max_workers = 10
     
     results = {}
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
         future_to_key = {
-            executor.submit(fn, model_url): key
+            executor.submit(fn, model_url, code_url, dataset_url): key
             for key, fn in METRIC_REGISTRY
         }
 
@@ -86,7 +147,9 @@ def run_all_metrics(event, context):
         "name": name
     }
 
+    return output_payload
 
+'''
     try:
         # The next function should also be called synchronously to ensure a final
         # 201/202 status can be returned from the API Gateway chain.
@@ -110,7 +173,7 @@ def run_all_metrics(event, context):
         # Read and parse the Ingestor's clean response
         ingestor_result_str = ingestor_response['Payload'].read().decode('utf-8')
         ingestor_result = json.loads(ingestor_result_str)
-        
+
         # Return the Ingestor's statusCode and body back up the chain to the API client
         return ingestor_result
     
@@ -120,3 +183,4 @@ def run_all_metrics(event, context):
             "statusCode": 500,
             "body": json.dumps({"error": "Internal error during final step handoff."})
         }
+    '''  
