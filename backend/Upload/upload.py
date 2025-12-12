@@ -188,7 +188,7 @@ def lambda_handler(event, context):
             )
     
     # =====================================================================
-    # 4. FORMATE RESPONSE
+    # 4. FORMAT RESPONSE
     # =====================================================================
 
     #if no zip download url found then return model url
