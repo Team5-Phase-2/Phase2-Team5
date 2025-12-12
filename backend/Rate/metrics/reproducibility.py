@@ -35,13 +35,55 @@ def reproducibility(model_url: str, code_url: str, dataset_url: str) -> Tuple[Op
     # 'Provide a status code of 1 if the code works straight out of the box, 0.5 if it works after 2 attempts to fix it, and 0 otherwise.' \
     # 'Respond with the formate: "Final Response -- Status Code : <>"'
     
-    query: str = f'Please execute the example code from the README at {model_url} without simulating errors or assumptions.' \
-    f'The contents of the README are as follows:\n{readme_content.decode("utf-8")}\n' \
-    'If there is no contents in the README, try accessing the README directly from the url I provided previously.' \
-    'Executed in a standard environment with no pip libraries already installed. Only preinstall libraries that come from explicite imports.' \
-    'List any assumptions made.' \
-    'Provide a status code of 1 if the code works straight out of the box, 0.5 if it works after 2 attempts to fix it, and 0 otherwise.' \
-    'Respond with the formate: "Final Response -- Status Code : <>"'
+    query: str = f"""
+        [SYSTEM ROLE]
+        You are an execution analyst responsible for evaluating whether example code from a 
+        HuggingFace model README can run successfully in a clean environment. You must attempt to 
+        execute the code exactly as written, without inventing missing steps or simulating 
+        hypothetical errors. You may only use libraries explicitly imported in the code.
+
+        [USER ROLE]
+        The user provides the URL of a HuggingFace model and the README contents. Your job is to 
+        evaluate the example code exactly as the user provides it.
+
+        [INPUT]
+        Model URL:
+        {model_url}
+
+        README CONTENTS:
+        {readme_content.decode("utf-8")}
+
+        [TASK]
+        1. Locate the example code in the README.
+        2. Attempt to execute the example code exactly as written.
+        3. Environment constraints:
+        - Assume a clean, standard Python environment.
+        - No pip-installed libraries are available unless the code explicitly imports them.
+        - You may only install or import libraries that the README example explicitly lists.
+
+        4. If the README contains no example code or is empty:
+        - Attempt to fetch the README directly from the provided model URL.
+
+        5. List any assumptions you had to make to perform execution.
+
+        [STATUS CODE RULES]
+        Provide a status code based on execution viability:
+        - 1     → The code runs successfully out of the box with no fixes.
+        - 0.5   → The code runs after up to two minimal fixes.
+        - 0     → The code does not run even after two fix attempts.
+
+        [CONSTRAINTS]
+        - Do not simulate imaginary errors.
+        - Do not assume missing import statements.
+        - Do not add steps unless strictly necessary for execution.
+        - Do not modify the example code unless it is part of one of the two allowed fixes.
+        - Do not include commentary unrelated to execution results.
+
+        [OUTPUT FORMAT]
+        Respond **only** in the following format:
+
+        Final Response -- Status Code: <value>
+        """
     
     resp: dict = query_genai(query)
     # if resp == "Error":
