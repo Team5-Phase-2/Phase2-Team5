@@ -120,7 +120,7 @@ def lambda_handler(event, context):
     zip_download_url = s3.generate_presigned_url(
         "get_object",
         Params={"Bucket": s3_bucket, "Key": zip_key},
-        ExpiresIn=3600,
+        ExpiresIn=2592000,
     )
 
     # =====================================================================
