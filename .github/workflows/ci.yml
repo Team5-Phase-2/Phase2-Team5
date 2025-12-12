@@ -30,8 +30,7 @@ jobs:
 
     - name: Lint for Python
       run: |
-        output=$(pylint backend --exit-zero)
-        echo "$output"
+        pylint backend --exit-zero
       
     - name: Run tests with Pytest
       run: |
