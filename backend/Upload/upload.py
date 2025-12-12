@@ -87,7 +87,7 @@ def lambda_handler(event, context):
     
     ssm = boto3.client("ssm")
     EC2_ID = os.environ.get("EC2_ID")
-    SCRIPT_PATH = os.eviron.get("DOWNLOAD_SCRIPT_PATH")
+    SCRIPT_PATH = os.environ.get("DOWNLOAD_SCRIPT_PATH")
 
     ssm.send_command(
         InstanceIds=[EC2_ID],
