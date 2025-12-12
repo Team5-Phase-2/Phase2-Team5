@@ -6,7 +6,6 @@ flake8
 isort
 mypy
 
-
 transformers
 huggingface_hub
 

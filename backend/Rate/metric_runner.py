@@ -6,7 +6,6 @@ which accepts an event and context and returns an API Gateway-style
 response dict.
 """
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from typing import Dict, Tuple
 from metrics.registry import METRIC_REGISTRY
 import json
 from run_metrics import calculate_net_score
@@ -30,8 +29,6 @@ def run_all_metrics(event, context):
         artifact_type = data.get("artifact_type")
         model_url = data.get("source_url")
         name = data.get("name")
-
-        print(f"Processing artifact: {artifact_type} | URL: {model_url}")
 
         if not artifact_type or not model_url:
             return {
@@ -70,18 +67,41 @@ def run_all_metrics(event, context):
 
             bedrock = boto3.client("bedrock-runtime", region_name="us-east-2", config=config)
 
-            prompt = f""" You are an expert analyst and trying to match HuggingFace models to their corresponding code and datasets.
+            prompt = f"""
+            [ROLE: SYSTEM]
+            You are an expert machine-learning analyst specializing in HuggingFace model repositories.
+            Your job is to extract only factual information directly found in the README.
+
+            [ROLE: USER]
+            The user will provide a README from a HuggingFace model card.
+            Your task is to analyze only the text the user supplies.
         
+            [INPUT]
             README:
             {readme_text}
 
+            [OBJECTIVE]
+            From the README, determine:
+            1. The GitHub repository URL that contains the code for this model.
+            2. The dataset URL referenced or linked in the README.
+
+            [INSTRUCTIONS]
             Task:
             - Identify from the README the url of the github code that is linked to this model.
             - Ensure the code url is valid. Attempt to return the url for the root directory.
             - Identify from the README the url of the dataset that is linked to this model
             - Respond in the following manner code_url, dataset_url
             - If you cannot find these things, return that string as NULL
-            - Only respond with these things, and no other text. There is no need to label them either.
+
+            [OUTPUT FORMAT]
+            Return **only** the following, in this exact order, separated by a comma:
+
+            code_url, dataset_url
+
+            Example:
+            https://github.com/user/repo, https://dataset.org/path
+
+
             """
 
             request_body = {
@@ -92,7 +112,7 @@ def run_all_metrics(event, context):
                     }
                 ],
                 'inferenceConfig': {
-                    'maxTokens': 256,
+                    'maxTokens': 256, #Lowered from 512 to get faster responce time.
                     'temperature': 0.7
                 }
             }
@@ -111,15 +131,13 @@ def run_all_metrics(event, context):
                 urls = urls.split(",")
                 code_url = urls[0]
                 dataset_url = urls[1]
-            
+            else:
+                code_url = None
+                dataset_url = None 
 
         except Exception as e:
-            return "TIME OUT!"
             code_url = None
             dataset_url = None
-
-        print(f"Code URL: {code_url}")
-        print(f"Dataset URL: {dataset_url}")
 
         max_workers = 10
         
@@ -145,14 +163,14 @@ def run_all_metrics(event, context):
         net_score = calculate_net_score(results)
 
         # 3. Determine whether to ingest (example rule)
-        '''
+        
         for k, (score, latency) in results.items():
             if score is None or score < 0.5:
                 return {
                     "statusCode": 424,
-                    "body": {}
+                    "body": {"Model failed to pass metric checks: {k}: {score}"}
                 }
-        '''
+        
         
     output_payload = {
         "artifact_type": artifact_type,
@@ -195,4 +213,3 @@ def run_all_metrics(event, context):
             "statusCode": 500,
             "body": json.dumps({"error": "Internal error during final step handoff."})
         }
-    
