@@ -30,7 +30,7 @@ jobs:
 
     - name: Lint for Python
       run: |
-        pylint backend --exit-zero
+        pylint --exit-zero $(find backend -name "*.py")
       
     - name: Run tests with Pytest
       run: |
