@@ -12,6 +12,7 @@ import json
 from run_metrics import calculate_net_score
 import boto3
 from metrics.utils import fetch_hf_readme_text
+from botocore.config import Config
 
 lambda_client = boto3.client('lambda')
 
@@ -45,99 +46,113 @@ def run_all_metrics(event, context):
             "body": json.dumps({"error": f"Internal processing error: {str(e)}"})
         }
 
+    results = {"Non-Model": "0.0"}
+    net_score = 0.0
 
-    readme_text = fetch_hf_readme_text(model_url)
-    if readme_text is None:
-        return {
-            "statusCode": 500,
-            "body": json.dumps({"error": "Failed to fetch README text."})
-        }
+    if artifact_type == "model":
 
-    try:
-        bedrock = boto3.client("bedrock-runtime", region_name="us-east-2")
-
-        prompt = f""" You are an expert analyst and trying to match HuggingFace models to their corresponding code and datasets.
-     
-        README:
-        {readme_text}
-
-        Task:
-        - Identify from the README the url of the github code that is linked to this model.
-        - Ensure the code url is valid. Attempt to return the url for the root directory.
-        - Identify from the README the url of the dataset that is linked to this model
-        - Respond in the following manner code_url, dataset_url
-        - If you cannot find these things, return that string as NULL
-        - Only respond with these things, and no other text. There is no need to label them either.
-        """
-
-        request_body = {
-            'messages': [
-                {
-                    'role': 'user',
-                    'content': [{'text': prompt}]
-                }
-            ],
-            'inferenceConfig': {
-                'maxTokens': 512,
-                'temperature': 0.7
-            }
-        }
-
-        response = bedrock.invoke_model(
-            modelId='us.amazon.nova-2-lite-v1:0',
-            body=json.dumps(request_body)
-        )
-
-        response_body = json.loads(response['body'].read())
-        content_list = response_body["output"]["message"]["content"]
-        # Extract the first text block
-        text_block = next((item for item in content_list if "text" in item), None)
-        if text_block is not None:
-            urls = text_block["text"]
-            urls = urls.split(",")
-            code_url = urls[0]
-            dataset_url = urls[1]
-        
-
-    except Exception as e:
-        code_url = None
-        dataset_url = None
-
-    print(f"Code URL: {code_url}")
-    print(f"Dataset URL: {dataset_url}")
-
-    max_workers = 10
-    
-    results = {}
-    with ThreadPoolExecutor(max_workers=max_workers) as executor:
-        future_to_key = {
-            executor.submit(fn, model_url, code_url, dataset_url): key
-            for key, fn in METRIC_REGISTRY
-        }
-
-        for future in as_completed(future_to_key):
-            key = future_to_key[future]
-            try:
-                score_latency = future.result()
-                
-                if isinstance(score_latency, tuple) and len(score_latency) == 2:
-                    results[key] = score_latency
-                else:
-                    results[key] = (score_latency, 0)
-            except Exception:
-                results[key] = (None, 0)
-    
-    net_score = calculate_net_score(results)
-
-    # 3. Determine whether to ingest (example rule)
-    '''
-    for k, (score, latency) in results.items():
-        if score is None or score < 0.5:
+        readme_text = fetch_hf_readme_text(model_url)
+        if readme_text is None:
             return {
-                "statusCode": 424,
-                "body": {}
+                "statusCode": 500,
+                "body": json.dumps({"error": "Failed to fetch README text."})
             }
-    '''
+
+        try:
+            config = Config(
+                read_timeout=15,
+                connect_timeout=5,
+                retries={
+                    'max_attempts': 2
+                }
+            )
+
+
+            bedrock = boto3.client("bedrock-runtime", region_name="us-east-2", config=config)
+
+            prompt = f""" You are an expert analyst and trying to match HuggingFace models to their corresponding code and datasets.
+        
+            README:
+            {readme_text}
+
+            Task:
+            - Identify from the README the url of the github code that is linked to this model.
+            - Ensure the code url is valid. Attempt to return the url for the root directory.
+            - Identify from the README the url of the dataset that is linked to this model
+            - Respond in the following manner code_url, dataset_url
+            - If you cannot find these things, return that string as NULL
+            - Only respond with these things, and no other text. There is no need to label them either.
+            """
+
+            request_body = {
+                'messages': [
+                    {
+                        'role': 'user',
+                        'content': [{'text': prompt}]
+                    }
+                ],
+                'inferenceConfig': {
+                    'maxTokens': 256,
+                    'temperature': 0.7
+                }
+            }
+
+            response = bedrock.invoke_model(
+                modelId='us.amazon.nova-2-lite-v1:0',
+                body=json.dumps(request_body)
+            )
+
+            response_body = json.loads(response['body'].read())
+            content_list = response_body["output"]["message"]["content"]
+            # Extract the first text block
+            text_block = next((item for item in content_list if "text" in item), None)
+            if text_block is not None:
+                urls = text_block["text"]
+                urls = urls.split(",")
+                code_url = urls[0]
+                dataset_url = urls[1]
+            
+
+        except Exception as e:
+            return "TIME OUT!"
+            code_url = None
+            dataset_url = None
+
+        print(f"Code URL: {code_url}")
+        print(f"Dataset URL: {dataset_url}")
+
+        max_workers = 10
+        
+        results = {}
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            future_to_key = {
+                executor.submit(fn, model_url, code_url, dataset_url): key
+                for key, fn in METRIC_REGISTRY
+            }
+
+            for future in as_completed(future_to_key):
+                key = future_to_key[future]
+                try:
+                    score_latency = future.result()
+                    
+                    if isinstance(score_latency, tuple) and len(score_latency) == 2:
+                        results[key] = score_latency
+                    else:
+                        results[key] = (score_latency, 0)
+                except Exception:
+                    results[key] = (None, 0)
+        
+        net_score = calculate_net_score(results)
+
+        # 3. Determine whether to ingest (example rule)
+        '''
+        for k, (score, latency) in results.items():
+            if score is None or score < 0.5:
+                return {
+                    "statusCode": 424,
+                    "body": {}
+                }
+        '''
         
     output_payload = {
         "artifact_type": artifact_type,
