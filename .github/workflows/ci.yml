@@ -30,13 +30,10 @@ jobs:
 
     - name: Lint for Python
       run: |
-        output=$(pylint src tests --exit-zero)
+        output=$(pylint backend --exit-zero)
         echo "$output"
       
     - name: Run tests with Pytest
-      run: |
-        pytest
-    - name: Build coverage html
       run: |
         pytest --cache-clear --cov=backend --cov-report=html --cov-report=term-missing --cov-fail-under=80
 
