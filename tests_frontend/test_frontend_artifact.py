@@ -1,3 +1,8 @@
+"""Frontend tests for the artifact page.
+
+Tests artifact display, interaction, and UI functionality.
+"""
+
 import pytest
 import time
 from selenium.common.exceptions import TimeoutException

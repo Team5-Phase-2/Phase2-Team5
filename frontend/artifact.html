@@ -1,3 +1,34 @@
+<!--
+==============================================================================
+Page: Artifact Detail — SecureModelHub
+
+Purpose:
+This page presents detailed information for a single SecureModelHub artifact.
+It serves as the primary interface for reviewing an artifact’s identity, trust
+evaluation, documentation, and lifecycle actions.
+
+Structure Overview:
+- Header: Global navigation and branding with links to Models and Docs pages.
+- Artifact Header Section:
+  - Displays the artifact name and unique identifier.
+  - Provides a primary action to download the artifact.
+- Scoring Section:
+  - Shows the aggregate (net) trust score.
+  - Includes an expandable view of individual subscores contributing to the
+    overall rating.
+- README Section:
+  - Renders the artifact’s README content for transparency and review.
+- Management Section:
+  - Exposes administrative actions, including artifact deletion, with
+    prominent warnings for irreversible operations.
+
+Dynamic Behavior:
+- Page content is populated client-side via JavaScript, using query parameters
+  to identify the target artifact and retrieve associated metadata and scores.
+
+==============================================================================
+-->
+
 <!DOCTYPE html>
 <html lang="en">
 <head>

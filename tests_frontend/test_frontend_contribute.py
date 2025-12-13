@@ -1,3 +1,8 @@
+"""Frontend tests for the contribute page.
+
+Tests artifact contribution form, validation, and submission functionality.
+"""
+
 import pytest
 import time
 from selenium.common.exceptions import TimeoutException

@@ -1,3 +1,8 @@
+"""Unit tests for the Get Rate Lambda function.
+
+Tests rating retrieval and calculation using mocked AWS services.
+"""
+
 import os
 import json
 

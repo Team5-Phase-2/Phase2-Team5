@@ -1,3 +1,8 @@
+"""Unit tests for the Get Cost Lambda function.
+
+Tests cost calculation, and error handling.
+"""
+
 import json
 import os
 import pytest

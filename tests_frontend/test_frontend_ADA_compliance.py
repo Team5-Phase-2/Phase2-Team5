@@ -1,3 +1,8 @@
+"""Frontend accessibility (ADA) compliance tests.
+
+Tests UI components for accessibility standards using Axe Selenium.
+"""
+
 import json
 import pytest
 from selenium import webdriver

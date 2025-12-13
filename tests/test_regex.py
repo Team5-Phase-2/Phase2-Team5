@@ -1,3 +1,8 @@
+"""Unit tests for the Regex Lambda function.
+
+Tests regex-based artifact searching, reDOS attacks, and S3 integration.
+"""
+
 import json
 import pytest
 from unittest.mock import patch, MagicMock

@@ -1,3 +1,8 @@
+"""Unit tests for the Delete Lambda function.
+
+Tests artifact deletion, error handling, and AWS service interactions.
+"""
+
 import json
 import os
 import pytest

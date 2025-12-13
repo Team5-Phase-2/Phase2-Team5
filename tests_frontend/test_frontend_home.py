@@ -1,3 +1,8 @@
+"""Frontend tests for the home page.
+
+Tests main page elements, navigation, and core UI functionality.
+"""
+
 import pytest
 import time
 from selenium.common.exceptions import TimeoutException

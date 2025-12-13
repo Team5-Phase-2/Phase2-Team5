@@ -1,3 +1,8 @@
+"""Unit tests for the Track Lambda function.
+
+Tests selected Track.
+"""
+
 import json
 from unittest.mock import patch
 import backend.Track.Track as track

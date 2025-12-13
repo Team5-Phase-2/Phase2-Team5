@@ -1,3 +1,7 @@
+# Continuous Integration workflow for automated testing and linting.
+# Triggered on push to any branch or pull requests to main.
+# Validates code quality with pylint and runs pytest with coverage reporting.
+
 name: Continous Integration testing
 
 on:

@@ -1,3 +1,8 @@
+"""Unit tests for the Health Lambda function.
+
+Tests health check endpoints, logging, and CloudWatch integration.
+"""
+
 import json
 import pytest
 from unittest.mock import patch, MagicMock

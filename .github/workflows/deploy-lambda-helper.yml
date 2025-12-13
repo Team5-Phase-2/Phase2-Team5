@@ -1,3 +1,7 @@
+# Orchestrates deployment of multiple AWS Lambda functions for backend services.
+# Triggered manually via workflow_dispatch or on push to main branch.
+# Calls individual Lambda deployment workflows for each service.
+
 name: Deploymnent to AWS
 
 on:
