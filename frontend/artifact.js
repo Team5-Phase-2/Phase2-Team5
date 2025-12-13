@@ -1,3 +1,7 @@
+/**
+ * artifact.js - Loads and displays details for a specific artifact, including metadata, ratings, and README.
+ */
+
 const API_BASE_URL = "https://moy7eewxxe.execute-api.us-east-2.amazonaws.com/main";
 
 const urlParams = new URLSearchParams(window.location.search);
@@ -6,6 +10,9 @@ const artifactType = urlParams.get("type"); // model, dataset, code
 
 document.getElementById("artifactId").textContent = artifactId;
 
+/**
+ * Loads artifact data, ratings, and README from the API and updates the page.
+ */
 async function loadArtifact() {
     try {
         // --- Fetch metadata ---

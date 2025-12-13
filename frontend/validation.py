@@ -2,7 +2,7 @@ from selenium import webdriver
 from axe_selenium_python import Axe
 
 driver = webdriver.Chrome()
-driver.get("http://127.0.0.1:3000/home.html")
+driver.get("http://127.0.0.1:3000/frontend/docs.html")
 
 axe = Axe(driver)
 axe.inject()

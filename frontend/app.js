@@ -1,10 +1,15 @@
 /**
- * app.js - Conceptual Logic for Fan-Out Data Loading
+ * app.js - Main application logic for SecureModelHub frontend.
+ * Handles artifact searching, fetching details, rendering UI components, and modal interactions.
  */
 
 const API_BASE_URL = 'https://moy7eewxxe.execute-api.us-east-2.amazonaws.com/main';
 
-// --- 1. Helper Function to Fetch All Details ---
+/**
+ * Escapes HTML special characters to prevent XSS in user-generated content.
+ * @param {string} str - The string to escape.
+ * @returns {string} The escaped string.
+ */
 function escapeHtml(str) {
     if (str === null || str === undefined) return '';
     return String(str)
@@ -15,35 +20,33 @@ function escapeHtml(str) {
         .replace(/'/g, "&#039;");
 }
 
+/**
+ * Searches for artifacts using a regex query and updates the UI with results.
+ * @param {string} query - The search query to match against artifact names and READMEs.
+ */
 async function searchArtifacts(query) {
     const modelsGrid = document.getElementById('modelsGrid');
     const searchButton = document.getElementById('searchButton');
     const searchInput = document.getElementById('searchInput');
 
-    // 💡 CHANGE 2: Handle empty query immediately (Before API call)
     if (!query || query.trim() === '') {
         console.log('Empty search query. Redirecting to home (init).');
         
-        // Reset loading state if it somehow got set
         searchButton.disabled = false; 
         searchInput.disabled = false;
         searchButton.innerHTML = searchButton.originalButtonContent || '<i class="fas fa-search"></i> Search';
 
-        // Call your initialization function to reload the full artifact list
         init(); 
         
-        return; // <--- Terminates the function
+        return;
     }
 
-    // 💡 We must define originalButtonContent globally or before the loading state begins
     const originalButtonContent = searchButton.innerHTML;
 
-    // --- Loading State START ---
     searchButton.disabled = true; 
     searchInput.disabled = true;
     modelsGrid.innerHTML = '<div class="model-card placeholder"><i class="fas fa-spinner fa-spin"></i> Searching artifacts...</div>';
     searchButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Searching';
-    // --- Loading State END ---
 
     try {
         const fullUrl = `${API_BASE_URL}/artifact/byRegEx`;
@@ -61,20 +64,16 @@ async function searchArtifacts(query) {
         });
 
         
-        // 💡 CHANGE 1: Explicitly check for 404 status before throwing a generic error
         if (!response.ok) {
             if (response.status === 404) {
-                 // Display the "No artifacts found" message and then exit the try block cleanly
                  modelsGrid.innerHTML = `<div class="model-card placeholder">No artifacts found matching: <strong>${escapeHtml(query)}</strong>.</div>`;
-                 return; // <--- Exit try block to skip rendering logic below
+                 return;
             }
-            // For any other error (400, 500, etc.), throw the standard error
             throw new Error(`Search API Request Failed: ${response.status} ${response.statusText}`);
         }
 
         const artifacts = await response.json();
         
-        // --- Rendering Search Results (This section is now only reached if response.ok is true) ---
         modelsGrid.innerHTML = ''; // Clear loading message
 
         if (artifacts.length === 0) {
@@ -82,23 +81,20 @@ async function searchArtifacts(query) {
         } else {
             artifacts.forEach((model) => {
             const placeholderCard = createModelCard(model, { rating: 'N/A', cost: 'N/A', isLicensed: false });
-            // mark clickable and attach model reference for later use
             placeholderCard.classList.add('clickable');
             placeholderCard._model = model;
 
-            // click on card -> open/fetch details (but ignore clicks on the Details button itself)
             placeholderCard.addEventListener('click', async (e) => {
-                if (e.target.closest('.btn-details')) return; // let the details button handler handle it
+                if (e.target.closest('.btn-details')) return;
                 const id = model.id;
-                console.log('Card clicked, model ID:', id); // DEBUG
+                console.log('Card clicked, model ID:', id);
                 if (!id) {
                     alert('Model ID not available for this artifact.');
                     return;
                 }
 
-                // use cache if available
                 if (modelDetailsCache.has(id)) {
-                    console.log('Using cached details for', id); // DEBUG
+                    console.log('Using cached details for', id);
                     openModelModal(model, modelDetailsCache.get(id));
                     return;
                 }
@@ -136,6 +132,12 @@ async function searchArtifacts(query) {
 
 
 
+/**
+ * Fetches detailed information for a model, including rating and cost.
+ * @param {string} id - The model ID.
+ * @param {string} model_type - The type of model (e.g., 'model').
+ * @returns {Promise<Object>} An object with rating and cost properties.
+ */
 async function fetchModelDetails(id, model_type) {
     try {
         const [ratingResponse, costResponse, licenseResponse] = await Promise.all([
@@ -157,7 +159,12 @@ async function fetchModelDetails(id, model_type) {
     }
 }
 
-// --- 2. Function to Render a Model Card ---
+/**
+ * Creates a DOM element representing a model card with details.
+ * @param {Object} model - The model data object.
+ * @param {Object} details - Additional details like rating and cost.
+ * @returns {HTMLElement} The model card element.
+ */
 function createModelCard(model, details = { rating: 'N/A', cost: 0, isLicensed: false }) {
     const card = document.createElement('div');
     card.className = 'model-card';
@@ -198,6 +205,11 @@ function createModelCard(model, details = { rating: 'N/A', cost: 0, isLicensed: 
 }
 const modelDetailsCache = new Map();
 
+/**
+ * Opens a modal dialog displaying detailed information about a model.
+ * @param {Object} model - The model data object.
+ * @param {Object} details - Additional details like rating and cost.
+ */
 function openModelModal(model, details) {
     // create overlay
     const overlay = document.createElement('div');
@@ -223,9 +235,9 @@ function openModelModal(model, details) {
 
     document.body.appendChild(overlay);
 }
-// --- 3. Main Initialization Function ---
-
-// Function to fetch the initial list of all artifacts
+/**
+ * Initializes the application by fetching and displaying the initial list of artifacts.
+ */
 async function init() {
     const modelsGrid = document.getElementById('modelsGrid');
     
