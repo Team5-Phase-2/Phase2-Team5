@@ -1,3 +1,32 @@
+<!--
+==============================================================================
+Page: Contribute — SecureModelHub
+
+Purpose:
+This page provides an interface for users to submit new AI artifacts to
+SecureModelHub for evaluation and potential inclusion in the registry.
+Supported artifact types include models, datasets, and source code.
+
+Structure Overview:
+- Header:
+  - Displays platform branding and primary navigation links.
+  - Provides a shortcut to return to the main hub.
+- Contribution Section:
+  - Introduces the contribution workflow and required inputs.
+  - Presents a submission form for artifact metadata.
+- Submission Form:
+  - Collects the artifact source URL.
+  - Allows selection of the artifact type (model, dataset, or code).
+  - Includes a primary action to submit the artifact for processing.
+  - Displays contextual success or error messages to the user.
+
+Dynamic Behavior:
+- Form submission and status messaging are handled client-side via JavaScript,
+  which communicates with backend services to validate and ingest submissions.
+
+==============================================================================
+-->
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -11,6 +40,7 @@
 </head>
 
 <body>
+    <!-- Contribute page: Allows users to submit new artifacts (models, datasets, code) for evaluation and inclusion in the registry. Form collects URL and type. -->
     
     <header class="header">
         <a href="home.html" class="logo">SecureModelHub</a>

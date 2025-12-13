@@ -1,3 +1,11 @@
+"""backend.Get_Cost.Get_Cost
+
+Lambda function to retrieve the storage cost/size of an artifact.
+
+Queries the S3 bucket for the artifact's zip file size and returns it in MB.
+Handles GET /artifact/{artifact_type}/{id}/cost requests.
+"""
+
 import boto3
 import json
 import os

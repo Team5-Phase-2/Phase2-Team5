@@ -1,3 +1,8 @@
+"""Unit tests for the Register Artifact Setup Lambda function.
+
+Tests artifact registration workflow and Lambda invocation handling.
+"""
+
 import json
 import pytest
 from unittest.mock import patch, MagicMock

@@ -14,15 +14,26 @@ document.addEventListener('DOMContentLoaded', () => {
     const submitButton = document.getElementById('submitButton');
     const messageContainer = document.getElementById('messageContainer');
 
-    function showMessage(text, isError = false) {
+/**
+ * Displays a message to the user in the message container.
+ * @param {string} text - The message text.
+ * @param {boolean} isError - Whether the message indicates an error.
+ */
+function showMessage(text, isError = false) {
         messageContainer.textContent = text;
         messageContainer.className = isError 
             ? 'message-container error' 
             : 'message-container success';
     }
     
-    // Simple Exponential Backoff Retry mechanism
-    async function fetchWithRetry(url, options, maxRetries = 3) {
+/**
+ * Fetches a URL with retry logic for transient errors.
+ * @param {string} url - The URL to fetch.
+ * @param {Object} options - Fetch options.
+ * @param {number} maxRetries - Maximum number of retries.
+ * @returns {Promise<Response>} The fetch response.
+ */
+async function fetchWithRetry(url, options, maxRetries = 3) {
     for (let attempt = 0; attempt < maxRetries; attempt++) {
         try {
             const response = await fetch(url, options);

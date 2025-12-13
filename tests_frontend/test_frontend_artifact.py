@@ -1,3 +1,8 @@
+"""Frontend tests for the artifact page.
+
+Tests artifact display, interaction, and UI functionality.
+"""
+
 import pytest
 import time
 from selenium.common.exceptions import TimeoutException
@@ -8,7 +13,6 @@ from selenium.webdriver.support import expected_conditions as EC
 # -----------------------------------------------------------------------------
 # 🔧 CONFIGURATION
 # -----------------------------------------------------------------------------
-# UPDATE THIS to your local server URL or file path
 TARGET_URL = "https://dkc81a64i5ewt.cloudfront.net/home.html"
 
 

@@ -379,6 +379,50 @@ select:focus {
 
 /*
 |--------------------------------------------------------------------------
+| 6. DOCS PAGE STYLES
+|--------------------------------------------------------------------------
+*/
+
+.docs-content h1 {
+    font-size: 2.5rem;
+    margin-bottom: 20px;
+    color: var(--text-dark);
+}
+
+.docs-content h2 {
+    font-size: 2rem;
+    margin-top: 40px;
+    margin-bottom: 15px;
+    color: var(--text-dark);
+}
+
+.docs-content h3 {
+    font-size: 1.5rem;
+    margin-top: 30px;
+    margin-bottom: 10px;
+    color: var(--primary-color);
+}
+
+.docs-content p, .docs-content li {
+    margin-bottom: 15px;
+    color: var(--text-dark);
+}
+
+.docs-content ul, .docs-content ol {
+    margin-left: 20px;
+    margin-bottom: 20px;
+}
+
+.docs-content .metric {
+    margin-bottom: 25px;
+    padding: 15px;
+    background-color: var(--secondary-color);
+    border-radius: 8px;
+    border-left: 4px solid var(--primary-color);
+}
+
+/*
+|--------------------------------------------------------------------------
 | 5. MEDIA QUERIES
 |--------------------------------------------------------------------------
 */

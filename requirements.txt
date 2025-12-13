@@ -17,3 +17,4 @@ moto
 
 selenium
 axe_selenium_python
+webdriver-manager

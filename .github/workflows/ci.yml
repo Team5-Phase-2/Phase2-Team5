@@ -1,3 +1,7 @@
+# Continuous Integration workflow for automated testing and linting.
+# Triggered on push to any branch or pull requests to main.
+# Validates code quality with pylint and runs pytest with coverage reporting.
+
 name: Continous Integration testing
 
 on:
@@ -22,6 +26,16 @@ jobs:
       uses: actions/setup-python@v5
       with:
         python-version: '3.10'
+
+    - name: Install system dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y wget unzip
+
+    - name: Install Google Chrome
+      run: |
+        wget -q https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
+        sudo apt-get install -y ./google-chrome-stable_current_amd64.deb
 
     - name: Install dependencies
       run: |

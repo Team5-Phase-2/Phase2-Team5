@@ -1,3 +1,8 @@
+"""Unit tests for the Reset Lambda function.
+
+Tests S3 bucket wiping and cleanup operations.
+"""
+
 import os
 import boto3
 from moto import mock_aws

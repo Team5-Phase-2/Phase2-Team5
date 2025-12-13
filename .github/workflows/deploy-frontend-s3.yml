@@ -1,3 +1,7 @@
+# Deploys static frontend assets to AWS S3 bucket.
+# Triggered manually via workflow_dispatch or on push to main branch.
+# Configures AWS credentials and syncs frontend files for hosting.
+
 name: Deployment of Static Frontend to S3
 
 on:

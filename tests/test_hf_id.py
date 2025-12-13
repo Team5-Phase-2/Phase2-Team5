@@ -1,3 +1,8 @@
+"""Unit tests for Hugging Face model ID extraction functionality.
+
+Tests URL parsing and ID normalization for various Hugging Face URL formats.
+"""
+
 import pytest
 from backend.Rate.scoring import _hf_model_id_from_url
 

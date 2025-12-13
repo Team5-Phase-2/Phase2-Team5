@@ -1,3 +1,8 @@
+"""Unit tests for the Artifacts Lambda function.
+
+Tests artifact retrieval, upload, and validation functionality using mocked AWS services.
+"""
+
 import os
 import json
 import hashlib

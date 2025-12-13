@@ -1,3 +1,7 @@
+# Deploys AWS Lambda functions to the specified environment.
+# Triggered by workflow_call with required inputs (lambda-dir, path) and secrets (AWS credentials).
+# Handles packaging and uploading Lambda code for backend services.
+
 name: Deploy AWS Lambda Functions
 
 on:

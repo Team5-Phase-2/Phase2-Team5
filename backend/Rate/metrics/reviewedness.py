@@ -1,3 +1,12 @@
+"""backend.Rate.metrics.reviewedness
+
+Metric to assess the reviewedness of a model's GitHub repository.
+
+Computes the ratio of reviewed code additions to total additions in recent
+closed pull requests. Returns a score between 0 and 1 indicating the
+proportion of code changes that underwent review.
+"""
+
 # metrics/reviewedness.py
 import re
 import time

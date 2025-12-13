@@ -1,9 +1,18 @@
+"""backend.Rate.metrics.reproducibility
+
+Metric to evaluate the reproducibility of example code in a model's README.
+
+Uses generative AI to simulate execution of example code snippets from the
+README, determining if they run successfully out-of-the-box or after fixes.
+Returns a score of 1.0, 0.5, or 0.0 based on reproducibility.
+"""
+
 
 import time
 import re
 import json
 from typing import Optional, Tuple
-from urllib.parse import urlparse 
+from urllib.parse import urlparse
 
 from .utils import query_genai, fetch_hf_readme_text
 
@@ -86,8 +95,8 @@ def reproducibility(model_url: str, code_url: str, dataset_url: str) -> Tuple[Op
         """
     
     resp: dict = query_genai(query)
-    # if resp == "Error":
-    #   return 0.0, (time.time_ns() - start_ns) // 1_000_000
+    if resp == "Error":
+        return 0.0, (time.time_ns() - start_ns) // 1_000_000
     # Load the JSON response
     response_json = json.loads(resp['body'])
     
@@ -108,33 +117,4 @@ def extract_status_code(response: str) -> float:
         return float(match.group(1))
     else:
         return 0.0
-    
-    
-if __name__ == "__main__":
-    urls = {
-    "https://huggingface.co/google-bert/bert-base-uncased",
-    "https://huggingface.co/datasets/bookcorpus/bookcorpus",
-    "https://github.com/google-research/bert",
-    "https://huggingface.co/parvk11/audience_classifier_model",
-    "https://huggingface.co/distilbert-base-uncased-distilled-squad",
-    "https://huggingface.co/caidas/swin2SR-lightweight-x2-64",
-    "https://huggingface.co/vikhyatk/moondream2",
-    "https://huggingface.co/microsoft/git-base",
-    "https://huggingface.co/WinKawaks/vit-tiny-patch16-224",
-    "https://huggingface.co/patrickjohncyh/fashion-clip",
-    
-    "https://huggingface.co/lerobot/diffusion_pusht",
-    "https://huggingface.co/parthvpatil18/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaab",
-    "https://huggingface.co/microsoft/resnet-50",
-    "https://huggingface.co/crangana/trained-gender",
-    "https://huggingface.co/onnx-community/trained-gender-ONNX",
-    "https://huggingface.co/datasets/rajpurkar/squad",
-    "https://www.kaggle.com/datasets/hliang001/flickr2k",
-    "https://github.com/zalandoresearch/fashion-mnist",
-    }
-
-    for url in urls:
-        score, latency = reproducibility(url)
-        print(score, latency)
-
 
