@@ -8,7 +8,6 @@ from selenium.webdriver.support import expected_conditions as EC
 # -----------------------------------------------------------------------------
 # 🔧 CONFIGURATION
 # -----------------------------------------------------------------------------
-# UPDATE THIS to your local server URL or file path
 TARGET_URL = "https://dkc81a64i5ewt.cloudfront.net/home.html"
 
 
