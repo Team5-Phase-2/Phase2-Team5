@@ -1,5 +1,5 @@
 import pytest
-from backend.rate.perf_helper import (
+from backend.Rate.perf_helper import (
     has_real_metrics,
     _extract_eval_like_sections,
     _looks_like_metric_table,

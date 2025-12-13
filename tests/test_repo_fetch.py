@@ -17,7 +17,7 @@ sys.modules["scoring"] = fake_scoring
 # ================================================================
 # Now safe to import repo_fetch
 # ================================================================
-from backend.rate.repo_fetch import (
+from backend.Rate.repo_fetch import (
     download_hf_repo_subset,
     read_text_if_exists,
 )
@@ -35,7 +35,7 @@ def test_download_creates_directory(tmp_path, monkeypatch):
     mock_resp.status_code = 200
     mock_resp.text = "FILE CONTENT"
 
-    monkeypatch.setattr("backend.rate.repo_fetch.requests.get", lambda *a, **kw: mock_resp)
+    monkeypatch.setattr("backend.Rate.repo_fetch.requests.get", lambda *a, **kw: mock_resp)
 
     outdir = download_hf_repo_subset("https://huggingface.co/owner/repo")
     assert outdir.exists()
@@ -45,7 +45,7 @@ def test_download_creates_directory(tmp_path, monkeypatch):
 def test_download_handles_http_failures(monkeypatch):
     """If requests.get fails, function must still return a directory without raising."""
     monkeypatch.setattr(
-        "backend.rate.repo_fetch.requests.get",
+        "backend.Rate.repo_fetch.requests.get",
         lambda *a, **kw: MagicMock(status_code=404, text="")
     )
 
@@ -83,7 +83,7 @@ def test_download_catches_request_exception(monkeypatch):
     def bad_get(*args, **kwargs):
         raise RuntimeError("Network exploded")
 
-    monkeypatch.setattr("backend.rate.repo_fetch.requests.get", bad_get)
+    monkeypatch.setattr("backend.Rate.repo_fetch.requests.get", bad_get)
 
     outdir = download_hf_repo_subset("https://huggingface.co/owner/repo")
 

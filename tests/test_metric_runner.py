@@ -36,7 +36,7 @@ sys.modules["metrics.utils"] = fake_utils_mod
 # ===================================================================
 # Now safe to import the code under test
 # ===================================================================
-from backend.rate.metric_runner import run_all_metrics
+from backend.Rate.metric_runner import run_all_metrics
 
 
 # ===================================================================
@@ -48,8 +48,8 @@ def mock_aws_clients():
     - Patch boto3.client used inside metric_runner for Bedrock.
     - Patch the module-level lambda_client used for Upload.invoke.
     """
-    with patch("backend.rate.metric_runner.boto3.client") as mock_boto_client, \
-         patch("backend.rate.metric_runner.lambda_client") as mock_lambda_client:
+    with patch("backend.Rate.metric_runner.boto3.client") as mock_boto_client, \
+         patch("backend.Rate.metric_runner.lambda_client") as mock_lambda_client:
 
         # ----- Bedrock mock -----
         bedrock_mock = MagicMock()
@@ -100,7 +100,7 @@ def test_missing_artifact_type():
 
 def test_readme_fetch_failure():
     # fetch_hf_readme_text returns None -> 500
-    with patch("backend.rate.metric_runner.fetch_hf_readme_text", return_value=None):
+    with patch("backend.Rate.metric_runner.fetch_hf_readme_text", return_value=None):
         resp = run_all_metrics(
             {"artifact_type": "model", "source_url": "x", "name": "m"},
             None,
@@ -117,7 +117,7 @@ def test_metric_failure_returns_424():
         ("metricB", lambda u, c, d: (0.9, 20)),
     ]
 
-    with patch("backend.rate.metric_runner.METRIC_REGISTRY", failing_registry):
+    with patch("backend.Rate.metric_runner.METRIC_REGISTRY", failing_registry):
         resp = run_all_metrics(
             {"artifact_type": "model", "source_url": "x", "name": "m"},
             None,
@@ -166,7 +166,7 @@ def test_bedrock_invocation_exception(monkeypatch):
         raise RuntimeError("bedrock fail")
 
     monkeypatch.setattr(
-        "backend.rate.metric_runner.boto3.client",
+        "backend.Rate.metric_runner.boto3.client",
         lambda *a, **kw: MagicMock(invoke_model=bad_invoke)
     )
 
@@ -184,7 +184,7 @@ def test_metric_execution_exception():
         ("metricB", lambda u, c, d: (0.9, 20)),
     ]
 
-    with patch("backend.rate.metric_runner.METRIC_REGISTRY", bad_registry):
+    with patch("backend.Rate.metric_runner.METRIC_REGISTRY", bad_registry):
         resp = run_all_metrics(
             {"artifact_type": "model", "source_url": "x", "name": "m"},
             None
@@ -199,7 +199,7 @@ def test_upload_returns_function_error():
     error_payload = MagicMock()
     error_payload.read.return_value = b'{"bad": "error"}'
 
-    with patch("backend.rate.metric_runner.lambda_client") as mock_lambda:
+    with patch("backend.Rate.metric_runner.lambda_client") as mock_lambda:
         mock_lambda.invoke.return_value = {
             "FunctionError": "Unhandled",
             "Payload": error_payload
@@ -217,7 +217,7 @@ def test_upload_returns_function_error():
 
 
 def test_upload_invocation_raises_exception():
-    with patch("backend.rate.metric_runner.lambda_client") as mock_lambda:
+    with patch("backend.Rate.metric_runner.lambda_client") as mock_lambda:
         mock_lambda.invoke.side_effect = RuntimeError("upload fail")
 
         resp = run_all_metrics(
@@ -256,12 +256,12 @@ def test_bedrock_no_text_block(monkeypatch):
 
     # Patch boto3 client to return our mock
     monkeypatch.setattr(
-        "backend.rate.metric_runner.boto3.client",
+        "backend.Rate.metric_runner.boto3.client",
         lambda *a, **kw: bedrock_mock
     )
 
     # Patch METRIC_REGISTRY so metrics pass if reached
-    with patch("backend.rate.metric_runner.METRIC_REGISTRY", [("m1", lambda *a: (1.0, 1))]):
+    with patch("backend.Rate.metric_runner.METRIC_REGISTRY", [("m1", lambda *a: (1.0, 1))]):
         resp = run_all_metrics(
             {"artifact_type": "model", "source_url": "x", "name": "m"},
             None
@@ -277,7 +277,7 @@ def test_metric_returns_non_tuple():
         ("metricB", lambda *a: (0.9, 10)),
     ]
 
-    with patch("backend.rate.metric_runner.METRIC_REGISTRY", bad_format_registry):
+    with patch("backend.Rate.metric_runner.METRIC_REGISTRY", bad_format_registry):
         resp = run_all_metrics(
             {"artifact_type": "model", "source_url": "x", "name": "m"},
             None

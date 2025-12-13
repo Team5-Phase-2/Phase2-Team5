@@ -1,5 +1,5 @@
 import pytest
-from backend.rate.scoring import _hf_model_id_from_url
+from backend.Rate.scoring import _hf_model_id_from_url
 
 
 def test_hf_scheme_with_owner_and_name():

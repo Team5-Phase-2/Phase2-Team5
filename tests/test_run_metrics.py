@@ -1,5 +1,5 @@
 import pytest
-from backend.rate.run_metrics import calculate_net_score, WEIGHTS
+from backend.Rate.run_metrics import calculate_net_score, WEIGHTS
 
 
 def test_all_metrics_normal_values():
