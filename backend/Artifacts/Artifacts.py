@@ -1,3 +1,11 @@
+"""backend.Artifacts.Artifacts
+
+AWS Lambda function to list and retrieve artifact metadata from S3.
+
+Provides a lambda_handler that accepts requests to list artifacts by type,
+with pagination support via offset headers.
+"""
+
 import hashlib
 import json
 import os

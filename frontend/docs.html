@@ -1,2 +1,112 @@
-<h1>Documentation coming soon.</h1>
-<p>We're working hard to provide comprehensive documentation for SecureModelHub. Stay tuned!</p>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SecureModelHub Documentation</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <header class="header">
+        <a href="home.html" class="logo">SecureModelHub</a>
+        <nav class="nav">
+            <a href="home.html">Home</a>
+            <a href="docs.html">Docs</a>
+        </nav>
+    </header>
+
+    <main class="artifact-container docs-content">
+        <h1>SecureModelHub Documentation</h1>
+        <p>This page provides detailed information on how SecureModelHub evaluates and rates machine learning models for security, trustworthiness, and quality. It explains the rating system, individual metrics, and how to interpret results.</p>
+
+        <h2>Overview of the Docs / Ratings Page</h2>
+        <p>The SecureModelHub frontend serves as a user interface for browsing and accessing the model registry. This documentation page focuses on transparency: it explains how model ratings are generated, what they mean, and the limitations of the automated evaluation system. Users can refer here to understand why a model received a particular score and how SecureModelHub assesses trust and security.</p>
+
+        <h2>How Model Ratings Are Generated</h2>
+        <p>Ratings are produced through automated analysis of model repositories (primarily from Hugging Face). When a model is submitted, the backend fetches metadata and code, runs a suite of metrics, and computes an overall net score. The process is:</p>
+        <ol>
+            <li>Extract model identifier from URL.</li>
+            <li>Fetch repository data (README, metadata, files).</li>
+            <li>Run each metric in parallel.</li>
+            <li>Aggregate scores with equal weighting (10% per metric).</li>
+            <li>Return individual scores and net score (0.0 to 1.0).</li>
+        </ol>
+        <p>Scores are heuristic-based and not a guarantee of security. They inform decisions but should be supplemented with manual review.</p>
+
+        <h2>Explanation of Metrics</h2>
+        <p>SecureModelHub evaluates models on 10 metrics, each returning a score from 0.0 (worst) to 1.0 (best) or None if uncomputable. Metrics assess different aspects of trustworthiness and usability.</p>
+
+        <div class="metric">
+            <h3>Ramp-Up Time</h3>
+            <p>Measures ease of getting started with the model. Based on presence of README/card, popularity (likes), and tutorial tags. Higher scores indicate better documentation and community support.</p>
+        </div>
+
+        <div class="metric">
+            <h3>Bus Factor</h3>
+            <p>Estimates project resilience by combining download volume (popularity) and recency of updates. Higher scores suggest lower risk from single-point failures.</p>
+        </div>
+
+        <div class="metric">
+            <h3>License</h3>
+            <p>Evaluates license permissiveness. Scores 1.0 for open licenses (e.g., MIT), lower for restrictive ones (e.g., GPL). Based on regex matching against license text.</p>
+        </div>
+
+        <div class="metric">
+            <h3>Performance Claims</h3>
+            <p>Checks for presence of numeric performance metrics in README or files. Scores 1.0 if claims are detected, 0.0 otherwise. Indicates transparency in results.</p>
+        </div>
+
+        <div class="metric">
+            <h3>Size Score</h3>
+            <p>Assesses deployability based on model file sizes. Larger models score lower due to resource requirements. Maps total bytes to device suitability scores.</p>
+        </div>
+
+        <div class="metric">
+            <h3>Dataset and Code Score</h3>
+            <p>Checks availability of training data and example code. Scores 1.0 if both present, 0.5 for one, 0.0 for none. Ensures reproducibility and usability.</p>
+        </div>
+
+        <div class="metric">
+            <h3>Dataset Quality</h3>
+            <p>Estimates dataset quality via heuristics like trusted sources and preprocessing keywords. Higher scores for well-documented, cleaned data.</p>
+        </div>
+
+        <div class="metric">
+            <h3>Code Quality</h3>
+            <p>Lints Python example files with pylint. Maps pylint scores to discrete buckets for consistency. Indicates code maintainability.</p>
+        </div>
+
+        <div class="metric">
+            <h3>Reviewedness</h3>
+            <p>Analyzes GitHub pull requests for code reviews. Scores based on ratio of reviewed to total code additions. Higher scores mean more oversight.</p>
+        </div>
+
+        <div class="metric">
+            <h3>Reproducibility</h3>
+            <p>Tests if README example code runs successfully. Uses AI simulation; scores 1.0 for out-of-box success, 0.5 after fixes, 0.0 otherwise.</p>
+        </div>
+
+        <h2>How to Interpret Scores</h2>
+        <p>Individual scores range from 0.0 to 1.0. The net score is the weighted average of available metrics. Interpret as:</p>
+        <ul>
+            <li>0.0-0.3: Significant concerns; manual review recommended.</li>
+            <li>0.3-0.7: Moderate; acceptable with caveats.</li>
+            <li>0.7-1.0: Strong; likely trustworthy.</li>
+        </ul>
+        <p>Thresholds are not enforced; scores are advisory. None values indicate metric failure (e.g., no data).</p>
+
+        <h2>Limitations and Non-Goals</h2>
+        <p>The rating system is automated and heuristic-based. It does not:</p>
+        <ul>
+            <li>Guarantee security or correctness.</li>
+            <li>Replace expert audits.</li>
+            <li>Account for all risk factors (e.g., adversarial inputs).</li>
+            <li>Enforce pass/fail decisions.</li>
+        </ul>
+        <p>Assumes Hugging Face as a trusted source; external repositories may yield inaccurate results.</p>
+
+        <h2>Transparency and Trust Philosophy</h2>
+        <p>SecureModelHub prioritizes openness: all metrics are documented, code is available, and scores are explainable. Trust is built through automated checks, not blind acceptance. Users should verify high-stakes models independently.</p>
+    </main>
+</body>
+</html>

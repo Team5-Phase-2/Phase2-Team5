@@ -82,3 +82,28 @@ def test_accessibility_artifacts(driver):
 
     # Fail the test if any violations were found
     assert len(violations) == 0, f"A11y violations detected: {len(violations)}"
+
+
+def test_accessibility_docs(driver):
+    driver.get("http://dkc81a64i5ewt.cloudfront.net/docs.html")
+
+    axe = Axe(driver)
+    axe.inject()
+
+    results = axe.run()
+
+    # Save results to file for debugging
+
+    violations = results["violations"]
+
+    # Print violations nicely if present
+    if violations:
+        print("\nAccessibility Violations Found:")
+        for v in violations:
+            print(f"\nViolation: {v['id']} - {v['description']}")
+            for node in v["nodes"]:
+                print(f"  HTML: {node['html']}")
+                print(f"  Target: {node['target']}")
+
+    # Fail the test if any violations were found
+    assert len(violations) == 0, f"A11y violations detected: {len(violations)}"

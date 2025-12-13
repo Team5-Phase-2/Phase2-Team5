@@ -1,3 +1,12 @@
+"""backend.Regex.regex
+
+Utilities for regex pattern safety validation.
+
+Provides functions to check if a regex pattern is safe from potential
+ReDoS (Regular expression Denial of Service) attacks by detecting
+nested quantifiers, large repeats, and ambiguous alternations.
+"""
+
 import json
 import re
 import boto3

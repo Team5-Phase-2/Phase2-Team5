@@ -1,3 +1,11 @@
+"""backend.Get_Rate.Get_Rate
+
+AWS Lambda function to retrieve rating metrics for a specific model artifact.
+
+Provides a lambda_handler that fetches and returns the computed metrics
+(metadata.json) for a given model ID from S3.
+"""
+
 import json
 import os
 import hashlib

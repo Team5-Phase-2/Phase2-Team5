@@ -1,5 +1,3 @@
-
-# run_metrics.py
 """backend.Rate.run_metrics
 
 Calculate and aggregate metric scores for a model URL and print results.
