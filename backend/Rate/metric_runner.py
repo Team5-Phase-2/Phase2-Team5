@@ -168,7 +168,9 @@ def run_all_metrics(event, context):
             if score is None or score < 0.5:
                 return {
                     "statusCode": 424,
-                    "body": {"Model failed to pass metric checks: {k}: {score}"}
+                    "body": json.dumps({
+                        "error": f"Model failed to pass metric checks: {k}: {score}"
+                    })
                 }
         
         
