@@ -5,14 +5,16 @@ import types
 # PRE-INJECT FAKE METRIC MODULES so registry can import safely
 # ===================================================================
 
-# Real registry imports these exact module files and functions:
+# Keep track of everything we inject so we can clean it up
+_INJECTED_MODULES = []
+
 metric_modules = {
     "ramp_up_time": "ramp_up_time",
     "bus_factor": "bus_factor",
     "license_score": "license_score",
     "performance_claims": "performance_claims",
     "size_score": "size_score",
-    "dataset_code": "dataset_and_code_score",   # <== IMPORTANT
+    "dataset_code": "dataset_and_code_score",   # IMPORTANT
     "dataset_quality": "dataset_quality",
     "code_quality": "code_quality",
     "reviewedness": "reviewedness",
@@ -20,29 +22,34 @@ metric_modules = {
 }
 
 for module_name, func_name in metric_modules.items():
-    # Create module object
-    fake_mod = types.ModuleType(f"backend.Rate.metrics.{module_name}")
+    module_path = f"backend.Rate.metrics.{module_name}"
 
-    # Define the correct function the registry expects
-    fake_func = lambda *a, **k: (0.9, 5)
-    fake_mod.__dict__[func_name] = fake_func
+    fake_mod = types.ModuleType(module_path)
 
-    # Register module in sys.modules
-    sys.modules[f"backend.Rate.metrics.{module_name}"] = fake_mod
+    # Registry expects a callable metric function
+    fake_mod.__dict__[func_name] = lambda *a, **k: (0.9, 5)
 
-# Stub scoring since some metric modules import it
+    sys.modules[module_path] = fake_mod
+    _INJECTED_MODULES.append(module_path)
+
+# -------------------------------------------------------------------
+# Stub scoring (REQUIRED because some metric modules import it)
+# -------------------------------------------------------------------
 fake_scoring = types.ModuleType("backend.Rate.scoring")
 fake_scoring._hf_model_id_from_url = lambda x: "owner/repo"
 
-# register both possible spellings
 sys.modules["backend.Rate.scoring"] = fake_scoring
 sys.modules["scoring"] = fake_scoring
+
+_INJECTED_MODULES.extend([
+    "backend.Rate.scoring",
+    "scoring",
+])
 
 # ===================================================================
 # NOW SAFE TO IMPORT REGISTRY
 # ===================================================================
 from backend.Rate.metrics.registry import METRIC_REGISTRY
-
 
 # ===================================================================
 # TESTS
@@ -79,3 +86,16 @@ def test_registry_keys_exact():
 def test_no_duplicate_keys():
     keys = [k for k, _ in METRIC_REGISTRY]
     assert len(keys) == len(set(keys))
+
+
+# ===================================================================
+# CRITICAL: CLEANUP AFTER THIS FILE
+# ===================================================================
+
+def teardown_module(module):
+    """
+    Remove all fake modules injected by this test so they do not
+    pollute later tests (especially test_scoring.py).
+    """
+    for name in _INJECTED_MODULES:
+        sys.modules.pop(name, None)
