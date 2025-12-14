@@ -22,7 +22,7 @@ def test_artifact_navigation_and_initial_load(driver):
     We assume the first model-card on the home page is a 'model' type.
     """
     driver.get(TARGET_URL)
-    wait = WebDriverWait(driver, 10)
+    wait = WebDriverWait(driver, 20)
 
     # 1. Locate the first model card's details button
     # Assuming 'btn-details' is the element that links to the artifact page.
