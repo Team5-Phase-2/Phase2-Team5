@@ -6,11 +6,14 @@ import sys
 import types
 from unittest.mock import MagicMock, patch
 
-pytestmark = pytest.mark.usefixtures("isolated_metric_runner_env")
 
-
-@pytest.fixture
+@pytest.fixture(autouse=True)
 def isolated_metric_runner_env():
+    """
+    Ensure fake `metrics` modules exist BEFORE metric_runner is imported.
+    This is REQUIRED because metric_runner does:
+        from metrics.registry import METRIC_REGISTRY
+    """
     original_modules = sys.modules.copy()
 
     injected = {
@@ -20,6 +23,7 @@ def isolated_metric_runner_env():
         "run_metrics",
     }
 
+    # ---- Fake metrics.registry ----
     fake_metrics_pkg = types.ModuleType("metrics")
     fake_registry_mod = types.ModuleType("metrics.registry")
     fake_registry_mod.METRIC_REGISTRY = [
@@ -31,16 +35,19 @@ def isolated_metric_runner_env():
     sys.modules["metrics"] = fake_metrics_pkg
     sys.modules["metrics.registry"] = fake_registry_mod
 
+    # ---- Fake run_metrics ----
     fake_run_metrics = types.ModuleType("run_metrics")
     fake_run_metrics.calculate_net_score = lambda results: 0.85
     sys.modules["run_metrics"] = fake_run_metrics
 
+    # ---- Fake metrics.utils ----
     fake_utils = types.ModuleType("metrics.utils")
     fake_utils.fetch_hf_readme_text = lambda _: "README TEXT"
     sys.modules["metrics.utils"] = fake_utils
 
     yield
 
+    # ---- Cleanup (safe) ----
     for k in injected:
         sys.modules.pop(k, None)
 
@@ -61,6 +68,7 @@ def mock_aws_clients():
     with patch("backend.Rate.metric_runner.boto3.client") as mock_boto, \
          patch("backend.Rate.metric_runner.lambda_client") as mock_lambda:
 
+        # ---- Bedrock mock ----
         bedrock = MagicMock()
         bedrock.invoke_model.return_value = {
             "body": MagicMock(
@@ -75,6 +83,7 @@ def mock_aws_clients():
         }
         mock_boto.return_value = bedrock
 
+        # ---- Upload mock ----
         payload = MagicMock()
         payload.read.return_value = json.dumps({
             "statusCode": 201,
@@ -133,7 +142,6 @@ def test_successful_run(metric_runner):
 
     assert resp["statusCode"] == 201
     assert resp["body"] == "OK"
-
 
 
 def test_non_model_artifact_skips_metrics(metric_runner):
@@ -199,5 +207,3 @@ def test_upload_invocation_raises(metric_runner):
         )
 
     assert resp["statusCode"] == 500
-
-
