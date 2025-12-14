@@ -7,22 +7,24 @@ from unittest.mock import MagicMock, patch
 
 @pytest.fixture(autouse=True)
 def isolated_metric_runner_env():
-    """
-    Provide fake modules ONLY during metric_runner tests,
-    and restore sys.modules afterward to prevent CI leakage.
-    """
     original_modules = sys.modules.copy()
+
+    injected = {
+        "metrics",
+        "metrics.registry",
+        "metrics.utils",
+        "run_metrics",
+    }
 
     # ---- Fake metrics.registry ----
     fake_metrics_pkg = types.ModuleType("metrics")
     fake_registry_mod = types.ModuleType("metrics.registry")
-
     fake_registry_mod.METRIC_REGISTRY = [
         ("metricA", lambda u, c, d: (0.9, 10)),
         ("metricB", lambda u, c, d: (0.8, 20)),
     ]
-
     fake_metrics_pkg.registry = fake_registry_mod
+
     sys.modules["metrics"] = fake_metrics_pkg
     sys.modules["metrics.registry"] = fake_registry_mod
 
@@ -38,9 +40,14 @@ def isolated_metric_runner_env():
 
     yield
 
-    # 🔥 Restore interpreter state
-    sys.modules.clear()
-    sys.modules.update(original_modules)
+    # ✅ SAFE cleanup
+    for k in injected:
+        sys.modules.pop(k, None)
+
+    for k, v in original_modules.items():
+        if k not in sys.modules:
+            sys.modules[k] = v
+
 
 
 @pytest.fixture
