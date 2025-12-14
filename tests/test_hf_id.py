@@ -14,4 +14,3 @@ from backend.Rate.scoring import _hf_model_id_from_url
 ])
 def test_hf_id_good(u, expect):
     assert _hf_model_id_from_url(u) == expect
-

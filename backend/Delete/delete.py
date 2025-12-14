@@ -7,10 +7,9 @@ uses S3 paginators and batched deletes to remove objects safely. Intended for
 administrative/testing use only.
 """
 
-from boto3 import client
 from os import environ
 import json
-
+from boto3 import client
 
 def delete_artifact(event, context):
     """Delete all objects from a specified artifact.
@@ -21,7 +20,7 @@ def delete_artifact(event, context):
     """
 
     path_params = event.get("pathParameters") or {}
-    id = path_params.get("id")
+    id = path_params.get("id") or {}
     artifact_type = path_params.get("artifact_type")
 
     if not id or not artifact_type:
@@ -44,14 +43,14 @@ def delete_artifact(event, context):
         id_exists = False
         for page in pages:
             if "Contents" in page:
-                id_exists = True 
-                
+                id_exists = True
+
                 # Create batch for deletion
                 objects_to_delete = [{"Key": obj["Key"]} for obj in page["Contents"]]
-                
+
                 if objects_to_delete:
                     s3_client.delete_objects(
-                        Bucket=s3_bucket, 
+                        Bucket=s3_bucket,
                         Delete={"Objects": objects_to_delete}
                     )
         if not id_exists:
@@ -64,4 +63,3 @@ def delete_artifact(event, context):
         return {"statusCode": 500, "body": str(e)}
 
     return {"statusCode": 200}
-

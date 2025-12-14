@@ -10,16 +10,16 @@ Notes:
 - Expects environment variable `REGISTRY_BUCKET` to be set to the S3 bucket
   name used for storing artifact metadata.
 """
+import os
 import json
 import zipfile
 import io
 import hashlib
 import base64
-import boto3
-import requests
 from urllib.parse import urlparse
+import requests
 from botocore.exceptions import ClientError
-import os
+import boto3
 
 os.makedirs("/tmp/huggingface/hub", exist_ok=True)
 
@@ -34,9 +34,6 @@ def lambda_handler(event, context):
         dict: API Gateway-compatible response with `statusCode` and `body`.
     """
 
-    # Log the incoming event for debugging and traceability.
-    print("Received event:", json.dumps(event))
-
     # Environment variable containing the target S3 bucket for artifact metadata
     s3_bucket = os.environ.get("REGISTRY_BUCKET")
     if not s3_bucket:
@@ -50,7 +47,7 @@ def lambda_handler(event, context):
 
     # Parse and validate JSON body from API Gateway event.
     body = event
-    
+
     # Required fields expected from the upstream scorer/ingestor
     artifact_type = body.get("artifact_type")
     model_url = body.get("model_url")
@@ -134,10 +131,10 @@ def lambda_handler(event, context):
             api_url = f"https://api.github.com/repos/{owner}/{repo}/readme"
             print("GITHUB README:", api_url)
 
-            gh = requests.get(api_url, timeout=(3, 12), headers={"User-Agent": "Mozilla/5.0"})
-            gh.raise_for_status()
+            github_resp = requests.get(api_url, timeout=(3, 12), headers={"User-Agent": "Mozilla/5.0"})
+            github_resp.raise_for_status()
 
-            info = gh.json()
+            info = github_resp.json()
             readme_bytes = base64.b64decode(info["content"])
             readme_name = info.get("name", "README")
 
@@ -165,9 +162,9 @@ def lambda_handler(event, context):
             api_url = f"https://huggingface.co/api/{repo_type}/{repo_id}"
             print("HF README API:", api_url)
 
-            info = requests.get(api_url, timeout=(3, 12), headers={"User-Agent": "Mozilla/5.0"}).json()
-            sha = info.get("sha")
-            siblings = info.get("siblings", [])
+            huggingface_resp = requests.get(api_url, timeout=(3, 12), headers={"User-Agent": "Mozilla/5.0"}).json()
+            sha = huggingface_resp.get("sha")
+            siblings = huggingface_resp.get("siblings", [])
 
             readme_file = None
             for s in siblings:
@@ -188,11 +185,9 @@ def lambda_handler(event, context):
                     ContentType="text/plain"
                 )
     except Exception as e:
-        print("README download failed:", e)
-        readme_download_url = None
-    
+        readme_key = None
     # =====================================================================
-    # 4. FORMAT RESPONSE
+    # 4. FORMAT METADATA AND STORE IN S3
     # =====================================================================
 
     #if no zip download url found then return model url
@@ -211,7 +206,6 @@ def lambda_handler(event, context):
         "name": name,
         "id": model_id
     }
-
 
     metadata = {"name": name, "id": model_id, "type": artifact_type}
     data = {"url": model_url, "download_url": zip_download_url} #THIS IS CHANGED
