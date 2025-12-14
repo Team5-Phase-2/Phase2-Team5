@@ -83,7 +83,7 @@ def test_update_lambda_success(monkeypatch):
     print(f"[TEST] statusCode = {result['statusCode']}")
 
     # ---- Assert ----
-    assert result["statusCode"] == 201  # reveals == vs = bug
+    assert result["statusCode"] == 200  # expect 200 after bug is fixed
 
     mock_s3.get_object.assert_called_once_with(
         Bucket="test-bucket",
