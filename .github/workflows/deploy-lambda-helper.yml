@@ -40,9 +40,6 @@ jobs:
       LAMBDA_AWS_ACCESS_KEY: ${{ secrets.LAMBDA_AWS_ACCESS_KEY }}
       LAMBDA_AWS_SECRET_ACCESS_KEY: ${{ secrets.LAMBDA_AWS_SECRET_ACCESS_KEY }}
 
-
-
-
   deploy-regex:
     uses: ./.github/workflows/aws_lambda_deploy.yml
     with:
@@ -117,8 +114,6 @@ jobs:
       LAMBDA_AWS_ACCESS_KEY: ${{ secrets.LAMBDA_AWS_ACCESS_KEY }}
       LAMBDA_AWS_SECRET_ACCESS_KEY: ${{ secrets.LAMBDA_AWS_SECRET_ACCESS_KEY }}
 
-  ## ENDPOINT LAMBDA FUNCTION DEPLOYMENT ##
-  # note: use path: ./backend/endpoint_setup
   deploy-register-artifact-setup:
     uses: ./.github/workflows/aws_lambda_deploy.yml
     with:

@@ -2,11 +2,12 @@
 
 Simple health-check Lambda. Returns HTTP 200 to indicate the service is up.
 """
-import boto3
+
 import datetime
 from datetime import timezone
 import time
 import json
+import boto3
 
 logs = boto3.client("logs")
 cloudwatch = boto3.client("cloudwatch")
@@ -27,11 +28,11 @@ LOG_GROUPS = [
 API_GATEWAY_API_ID = "moy7eewxxe"
 API_GATEWAY_STAGE = "main"
 
-
-# -----------------------------------------------------------
-# Helper: Run a CloudWatch Logs Insights query safely
-# -----------------------------------------------------------
 def run_query(log_group, query, start_ts, end_ts):
+    """
+    Execute a CloudWatch Logs Insights query for a given log group and time range,
+    polling until the query completes or terminates.
+    """
     response = logs.start_query(
         logGroupName=log_group,
         startTime=start_ts,
@@ -52,22 +53,28 @@ def run_query(log_group, query, start_ts, end_ts):
         time.sleep(0.3)
 
 
-# -----------------------------------------------------------
-# Helper: Extract integer from CloudWatch Insights results
-# -----------------------------------------------------------
 def extract_count(result, field_name):
+    """
+    Extract an integer value for a given field from the first row
+    of a CloudWatch Logs Insights query result.
+    """
     if not result["results"]:
         return 0
     row = {f["field"]: f["value"] for f in result["results"][0]}
     return int(row.get(field_name, 0))
 
 
-# -----------------------------------------------------------
-# API Gateway metrics (Avg, p95, p99, count)
-# -----------------------------------------------------------
 def get_api_gateway_metrics(start_dt, end_dt):
+    """
+    Retrieve API Gateway metrics for a specified time range.
+    """
 
     def get_average_latency():
+        """
+        Fetch the average API Gateway latency for the configured API and stage
+        over the given time range.
+        """
+
         resp = cloudwatch.get_metric_statistics(
             Namespace="AWS/ApiGateway",
             MetricName="Latency",
@@ -86,7 +93,10 @@ def get_api_gateway_metrics(start_dt, end_dt):
         return sorted(datapoints, key=lambda x: x["Timestamp"])[-1]["Average"]
 
     def get_extended_percentile(percentile):
-        # ID MUST start with lowercase letter
+        """
+        Retrieve the most recent API Gateway latency percentile value
+        for the configured API and stage over the given time range.
+        """
         query_id = f"p{percentile}latency"
 
         resp = cloudwatch.get_metric_data(
@@ -125,6 +135,9 @@ def get_api_gateway_metrics(start_dt, end_dt):
         return values[idx]
 
     def get_request_count():
+        """
+        Retrieve the total number of API Gateway requests over the given time range.
+        """
         resp = cloudwatch.get_metric_statistics(
             Namespace="AWS/ApiGateway",
             MetricName="Count",
@@ -148,10 +161,12 @@ def get_api_gateway_metrics(start_dt, end_dt):
     }
 
 
-# -----------------------------------------------------------
-# Main health collector
-# -----------------------------------------------------------
+
 def get_health_status():
+    """
+    Collect API Gateway metrics and CloudWatch log statistics for the last hour
+    and return a consolidated health status report.
+    """
     now = datetime.datetime.now(timezone.utc)
     one_hour_ago = now - datetime.timedelta(hours=1)
 
@@ -229,11 +244,11 @@ def get_health_status():
 
     return health
 
-
-# -----------------------------------------------------------
-# Lambda handler
-# -----------------------------------------------------------
 def lambda_handler(event, context):
+    """
+    AWS Lambda entry point that returns the current system health status
+    as a JSON HTTP response.
+    """
     health_data = get_health_status()
 
     return {

@@ -8,8 +8,6 @@ import os
 import pytest
 from unittest.mock import patch, MagicMock
 from botocore.exceptions import ClientError
-
-# Correct import path for your project
 import backend.Get_Cost.Get_Cost as get_cost_module
 
 

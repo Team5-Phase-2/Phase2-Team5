@@ -8,7 +8,6 @@ import os
 import pytest
 from unittest.mock import patch, MagicMock
 from botocore.exceptions import ClientError
-
 import backend.Delete.delete as delete_module
 
 

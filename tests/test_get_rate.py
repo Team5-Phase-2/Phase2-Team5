@@ -9,7 +9,6 @@ import json
 import boto3
 import pytest
 from moto import mock_aws
-
 from backend.Get_Rate.Get_Rate import lambda_handler
 
 @mock_aws

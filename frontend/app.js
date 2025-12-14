@@ -130,8 +130,6 @@ async function searchArtifacts(query) {
     }
 }
 
-
-
 /**
  * Fetches detailed information for a model, including rating and cost.
  * @param {string} id - The model ID.
@@ -175,30 +173,30 @@ function createModelCard(model, details = { rating: 'N/A', cost: 0, isLicensed: 
     const ratingNum = (typeof details.rating === 'number') ? Math.round(details.rating) : null;
 
     card.innerHTML = `
-    <div class="card-header">
-        <h3 class="model-name truncated-name" title="${escapeHtml(model.name || '')}">
-            ${escapeHtml(model.name || 'Untitled')}
-        </h3>
+        <div class="card-header">
+            <h3 class="model-name truncated-name" title="${escapeHtml(model.name || '')}">
+                ${escapeHtml(model.name || 'Untitled')}
+            </h3>
 
-        <div class="model-meta">
-            <code class="model-id">ID:${escapeHtml(model.id || '')}</code>
-            <div>
-                <span class="type-badge type-${escapeHtml(typeKey)}">
-                    ${escapeHtml(typeKey).toUpperCase()}
-                </span>
+            <div class="model-meta">
+                <code class="model-id">ID:${escapeHtml(model.id || '')}</code>
+                <div>
+                    <span class="type-badge type-${escapeHtml(typeKey)}">
+                        ${escapeHtml(typeKey).toUpperCase()}
+                    </span>
+                </div>
             </div>
         </div>
-    </div>
 
-    <div class="card-actions-line">
-        <button class="btn btn-ghost btn-details" data-id="${escapeHtml(model.id || '')}">Details</button>
+        <div class="card-actions-line">
+            <button class="btn btn-ghost btn-details" data-id="${escapeHtml(model.id || '')}">Details</button>
 
-        <button class="btn btn-primary btn-artifact" 
-            onclick="window.location.href='artifact.html?id=${escapeHtml(model.id)}&type=${escapeHtml(typeKey)}'">
-            View Artifact
-        </button>
-    </div>
-`;
+            <button class="btn btn-primary btn-artifact" 
+                onclick="window.location.href='artifact.html?id=${escapeHtml(model.id)}&type=${escapeHtml(typeKey)}'">
+                View Artifact
+            </button>
+        </div>
+    `;
 
 
     return card;
@@ -262,7 +260,7 @@ async function init() {
             throw new Error(`API Request Failed: ${response.status} ${response.statusText}`);
         }
 
-const artifacts = await response.json();
+        const artifacts = await response.json();
         
         // --- Rendering Logic ---
         modelsGrid.innerHTML = ''; // Clear loading message

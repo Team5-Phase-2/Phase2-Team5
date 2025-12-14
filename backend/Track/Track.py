@@ -11,23 +11,16 @@ import json
 
 
 def lambda_handler(event, context):
-  """Lambda entry point.
+    """Lambda entry point.
 
-  Args:
-    event (dict): The Lambda event payload.
-    context: Lambda context object (ignored).
+    Args:
+        event (dict): The Lambda event payload.
+        context: Lambda context object (ignored).
 
-  Returns:
-    dict: API Gateway compatible response with `statusCode` and `body`.
-  """
-
-  # Log the full incoming event for debugging and observability.
-  print("Received event:", json.dumps(event))
-
-  # Return a fixed example payload. Real implementations should perform
-  # business logic and return meaningful data.
-  return {
-    "statusCode": 200,
-    "body": json.dumps({"planned_tracks": "High-assurance track"})
+    Returns:
+        dict: API Gateway compatible response with `statusCode` and `body`.
+    """
+    return {
+        "statusCode": 200,
+        "body": json.dumps({"planned_tracks": "High-assurance track"})
   }
-

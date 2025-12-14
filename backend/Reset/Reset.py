@@ -7,9 +7,8 @@ uses S3 paginators and batched deletes to remove objects safely. Intended for
 administrative/testing use only.
 """
 
-from boto3 import client
 from os import environ
-
+from boto3 import client
 
 def wipe_s3_bucket(event, context):
     """Delete all objects from a configured S3 bucket.
@@ -45,4 +44,3 @@ def wipe_s3_bucket(event, context):
         return {"statusCode": 500, "body": str(e)}
 
     return {"statusCode": 200}
-
