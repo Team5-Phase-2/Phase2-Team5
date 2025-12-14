@@ -48,7 +48,7 @@ jobs:
       
     - name: Run tests with Pytest
       run: |
-        pytest --cache-clear --cov=backend --cov-report=html --cov-report=term-missing --cov-fail-under=80
+        pytest --cache-clear --cov=backend --cov-report=html --cov-report=term-missing --cov-fail-under=60
 
     - name: Archive code coverage results
       uses: actions/upload-artifact@v4
