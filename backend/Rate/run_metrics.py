@@ -24,13 +24,16 @@ WEIGHTS = {
 }
 
 def calculate_net_score(results: dict) -> float:
+    """
+    Compute a weighted aggregate score from individual metric results.
+    """
     total_weight = 0.0
     net_score = 0.0
     for name, w in WEIGHTS.items():
-        r = results.get(name)
-        if r is not None:
-            score = r[0]
-            
+        resp = results.get(name)
+        if resp is not None:
+            score = resp[0]
+
             #change to handle size_score returning dict
             if isinstance(score, dict):
                 score = sum(score.values()) / len(score)

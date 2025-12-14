@@ -15,7 +15,8 @@ Provides:
 # src/repo_fetch.py
 from __future__ import annotations
 from pathlib import Path
-import tempfile, requests
+import tempfile
+import requests
 from scoring import _hf_model_id_from_url
 
 # Candidate raw URLs to try (main/master)
@@ -68,10 +69,10 @@ def read_text_if_exists(dirpath: Path, name: str) -> str:
         str: File contents or an empty string on error/not found.
     """
 
-    p = dirpath / name
-    if p.exists():
+    path = dirpath / name
+    if path.exists():
         try:
-            return p.read_text(encoding="utf-8", errors="ignore")
+            return path.read_text(encoding="utf-8", errors="ignore")
         except Exception:
             # Read errors gracefully degrade to empty string
             return ""

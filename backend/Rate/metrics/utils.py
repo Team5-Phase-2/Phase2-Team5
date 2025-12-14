@@ -5,13 +5,12 @@ resources. These helpers are intentionally simple and return empty strings on
 transient errors to allow metrics to continue gracefully.
 """
 
-import requests
 import json
 from os import environ
-from scoring import _hf_model_id_from_url
 import ast
 import math
-
+import requests
+from scoring import _hf_model_id_from_url
 
 def fetch_hf_readme_text(model_url: str) -> str:
     """Fetch raw README.md text from a Hugging Face model repository.
@@ -35,6 +34,9 @@ def fetch_hf_readme_text(model_url: str) -> str:
 
 
 def query_genai(query: str) -> dict:
+    """
+    Send a prompt to the Purdue GenAI chat completions API and return the response.
+    """
     try:
         api_key = environ.get("PURDUE_GENAI_API_KEY")
     except Exception as e:
