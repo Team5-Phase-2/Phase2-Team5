@@ -1,10 +1,12 @@
 # tests/test_performance_claims.py
+# tests/test_performance_claims.py
 
 import pytest
 from unittest.mock import MagicMock
 
+import backend.Rate.metrics.performance_claims as pc
 from backend.Rate.metrics.performance_claims import performance_claims
-from backend.Rate.metrics import performance_claims as pc
+
 
 
 def test_readme_has_text_returns_one(monkeypatch):
