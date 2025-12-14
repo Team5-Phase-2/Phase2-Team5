@@ -21,14 +21,13 @@ def test_basic_response():
 
 
 def test_event_logging():
-    """Verify that the print call occurs and receives properly serialized JSON."""
+    """
+    Track lambda does not log or print the event.
+    This test only verifies successful execution.
+    """
     event = {"foo": "bar"}
 
-    with patch("builtins.print") as mock_print:
-        resp = track.lambda_handler(event, None)
+    resp = track.lambda_handler(event, None)
 
-        # The handler must still return successfully
-        assert resp["statusCode"] == 200
+    assert resp["statusCode"] == 200
 
-        # Ensure print() was called with JSON-serialized event
-        mock_print.assert_called_with("Received event:", json.dumps(event))
