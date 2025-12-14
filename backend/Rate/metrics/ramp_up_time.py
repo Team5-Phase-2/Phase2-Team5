@@ -8,7 +8,8 @@ compute a small score indicating ramp-up friendliness.
 
 from typing import Optional, Tuple
 import time
-import requests, math
+import math
+import requests
 from scoring import _hf_model_id_from_url
 
 
@@ -27,10 +28,10 @@ def ramp_up_time(model_url: str, code_url: str, dataset_url: str) -> Tuple[Optio
             return None, (time.time_ns() - start_ns) // 1_000_000
 
         try:
-            r = requests.get(f"https://huggingface.co/api/models/{model_id}", timeout=10)
-            if r.status_code != 200:
+            resp = requests.get(f"https://huggingface.co/api/models/{model_id}", timeout=10)
+            if resp.status_code != 200:
                 return None, (time.time_ns() - start_ns) // 1_000_000
-            info = r.json()
+            info = resp.json()
         except Exception:
             return None, (time.time_ns() - start_ns) // 1_000_000
 

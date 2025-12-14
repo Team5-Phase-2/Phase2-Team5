@@ -6,8 +6,9 @@ combination of popularity (downloads) and freshness (recent updates).
 
 from typing import Optional, Tuple
 import time
-import requests, math
+import math
 from datetime import datetime
+import requests
 from scoring import _hf_model_id_from_url
 
 

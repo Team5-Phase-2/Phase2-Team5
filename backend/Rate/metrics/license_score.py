@@ -10,9 +10,11 @@ error with latency included as the second tuple item.
 """
 
 from typing import Optional, Tuple
-import time, re
-from .utils import fetch_hf_readme_text
+import time
+import re
 from scoring import _hf_model_id_from_url
+from .utils import fetch_hf_readme_text
+
 
 def license_score(model_url: str, code_url: str, dataset_url: str) -> Tuple[Optional[float], int]:
     start_ns = time.time_ns()
@@ -65,9 +67,9 @@ def license_score(model_url: str, code_url: str, dataset_url: str) -> Tuple[Opti
                 text = readme_text.strip()
                 lower = text.lower()
 
-                m = re.search(r'(?im)^\s*license\s*:\s*([^\r\n#]+)$', lower)
-                if m:
-                    license_text = m.group(1).strip()
+                match = re.search(r'(?im)^\s*license\s*:\s*([^\r\n#]+)$', lower)
+                if match:
+                    license_text = match.group(1).strip()
                 else:
                     sec = re.search(
                         r"(?ims)^[ \t]*#{1,6}[ \t]*licens(?:e|ing)\b[^\n]*\n(.*?)(?=^[ \t]*#{1,6}[ \t]+\S|\Z)",
