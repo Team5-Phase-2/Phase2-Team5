@@ -4,18 +4,14 @@ import json
 import importlib
 import pytest
 
-import backend.Rate.metrics.reproducibility as rp
 
-
-@pytest.fixture(autouse=True)
-def fresh_reproducibility_module():
+@pytest.fixture
+def rp():
     """
-    Ensure reproducibility is NOT affected by metric_runner's fake modules.
-    This guarantees consistent behavior locally and in CI.
+    Always import reproducibility fresh.
+    Avoid reload(); metric_runner tests corrupt sys.modules ordering.
     """
-    importlib.reload(rp)
-    yield
-    importlib.reload(rp)
+    return importlib.import_module("backend.Rate.metrics.reproducibility")
 
 
 def _mock_genai_response(status_code: float):
@@ -32,7 +28,7 @@ def _mock_genai_response(status_code: float):
     }
 
 
-def test_reproducibility_returns_one(monkeypatch):
+def test_reproducibility_returns_one(monkeypatch, rp):
     monkeypatch.setattr(rp, "fetch_hf_readme_text", lambda _: "```python\nprint('hi')\n```")
     monkeypatch.setattr(rp, "query_genai", lambda _: _mock_genai_response(1))
 
@@ -42,7 +38,7 @@ def test_reproducibility_returns_one(monkeypatch):
     assert isinstance(latency, int)
 
 
-def test_reproducibility_returns_half(monkeypatch):
+def test_reproducibility_returns_half(monkeypatch, rp):
     monkeypatch.setattr(rp, "fetch_hf_readme_text", lambda _: "example code")
     monkeypatch.setattr(rp, "query_genai", lambda _: _mock_genai_response(0.5))
 
@@ -51,7 +47,7 @@ def test_reproducibility_returns_half(monkeypatch):
     assert score == 0.5
 
 
-def test_reproducibility_returns_zero(monkeypatch):
+def test_reproducibility_returns_zero(monkeypatch, rp):
     monkeypatch.setattr(rp, "fetch_hf_readme_text", lambda _: "example code")
     monkeypatch.setattr(rp, "query_genai", lambda _: _mock_genai_response(0))
 
@@ -60,7 +56,7 @@ def test_reproducibility_returns_zero(monkeypatch):
     assert score == 0.0
 
 
-def test_query_genai_error_returns_zero(monkeypatch):
+def test_query_genai_error_returns_zero(monkeypatch, rp):
     monkeypatch.setattr(rp, "fetch_hf_readme_text", lambda _: "example code")
     monkeypatch.setattr(rp, "query_genai", lambda _: "Error")
 
@@ -69,7 +65,7 @@ def test_query_genai_error_returns_zero(monkeypatch):
     assert score == 0.0
 
 
-def test_missing_status_code_returns_zero(monkeypatch):
+def test_missing_status_code_returns_zero(monkeypatch, rp):
     monkeypatch.setattr(rp, "fetch_hf_readme_text", lambda _: "example code")
     monkeypatch.setattr(
         rp,
@@ -88,11 +84,11 @@ def test_missing_status_code_returns_zero(monkeypatch):
     assert score == 0.0
 
 
-def test_extract_status_code_valid():
+def test_extract_status_code_valid(rp):
     assert rp.extract_status_code("Final Response -- Status Code : 1") == 1.0
     assert rp.extract_status_code("Final Response -- Status Code : 0.5") == 0.5
     assert rp.extract_status_code("Final Response -- Status Code : 0") == 0.0
 
 
-def test_extract_status_code_invalid():
+def test_extract_status_code_invalid(rp):
     assert rp.extract_status_code("garbage") == 0.0
