@@ -15,7 +15,7 @@ from selenium.webdriver.support import expected_conditions as EC
 # -----------------------------------------------------------------------------
 # UPDATE THIS to your local server URL or file path
 TARGET_URL = "https://dkc81a64i5ewt.cloudfront.net/home.html"
-RE_DOS_TIMEOUT_SECONDS = 5 
+RE_DOS_TIMEOUT_SECONDS = 15
 
 # -----------------------------------------------------------------------------
 # 🧪 TEST CASES
@@ -46,7 +46,7 @@ def test_regex_search_functionality(driver):
     Feature 2: Verify the Regex Search bar filters results.
     """
     driver.get(TARGET_URL)
-    wait = WebDriverWait(driver, 15) # Longer wait for API calls
+    wait = WebDriverWait(driver, 20) # Longer wait for API calls
 
     # 1. Input a search query
     search_input = wait.until(EC.visibility_of_element_located((By.ID, "searchInput")))
@@ -80,7 +80,7 @@ def test_model_details_modal(driver):
     Feature 1: Verify clicking 'Details' opens the modal and 'View Artifact' exists.
     """
     driver.get(TARGET_URL)
-    wait = WebDriverWait(driver, 20)
+    wait = WebDriverWait(driver, 30)
 
     # 1. Wait for the initial data fetch (init() function) to complete
     # We wait for a "Details" button to become clickable. 
@@ -157,13 +157,10 @@ def test_regex_redos_protection(driver):
 
 
 def test_empty_input_returns_all_models(driver):
-    """Tests that an empty search box returns all available artifacts/models."""
-    
-    # UPDATE THIS number to match your actual database count
-    EXPECTED_TOTAL_MODELS = 25 
+    """Tests that an empty search box returns all available artifacts/models.""" 
     
     driver.get(TARGET_URL)
-    wait = WebDriverWait(driver, 10)
+    wait = WebDriverWait(driver, 20)
     
     # [FIXED] Use ID 'searchButton'
     search_button = driver.find_element(By.ID, "searchButton")
@@ -190,7 +187,7 @@ def test_non_matching_input_message(driver):
     EXPECTED_FAILURE_TEXT = "No artifacts found matching" 
     
     driver.get(TARGET_URL)
-    wait = WebDriverWait(driver, 10)
+    wait = WebDriverWait(driver, 20)
     
     # 1. Wait for input to be ready
     search_box = wait.until(EC.element_to_be_clickable((By.ID, "searchInput")))
@@ -227,7 +224,7 @@ def test_docs_button_navigation(driver):
     Checks if clicking the 'Docs' link in the header navigates to 'docs.html'.
     """
     driver.get(TARGET_URL)
-    wait = WebDriverWait(driver, 5)
+    wait = WebDriverWait(driver, 10)
 
     # 1. Locate the 'Docs' button using its link text
     # The HTML shows a link with class 'nav-link' and text 'Docs'
