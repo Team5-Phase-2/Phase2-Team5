@@ -1,3 +1,5 @@
+# tests/test_metric_runner.py
+
 import json
 import pytest
 import sys
@@ -7,6 +9,10 @@ from unittest.mock import MagicMock, patch
 
 @pytest.fixture(autouse=True)
 def isolated_metric_runner_env():
+    """
+    Provide fake modules ONLY during metric_runner tests.
+    Never use monkeypatch here (scope mismatch).
+    """
     original_modules = sys.modules.copy()
 
     injected = {
@@ -40,7 +46,7 @@ def isolated_metric_runner_env():
 
     yield
 
-    # ✅ SAFE cleanup
+    # ✅ SAFE cleanup (no sys.modules.clear!)
     for k in injected:
         sys.modules.pop(k, None)
 
@@ -49,12 +55,8 @@ def isolated_metric_runner_env():
             sys.modules[k] = v
 
 
-
 @pytest.fixture
 def metric_runner():
-    """
-    Import metric_runner AFTER fake modules are injected.
-    """
     from backend.Rate.metric_runner import run_all_metrics
     return run_all_metrics
 
