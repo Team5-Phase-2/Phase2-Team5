@@ -4,11 +4,10 @@ import json
 import pytest
 
 import backend.Rate.metrics.reproducibility as rp
-from backend.Rate.metrics.reproducibility import reproducibility, extract_status_code
+from backend.Rate.metrics.reproducibility import reproducibility
 
 
 def _mock_genai_response(status_code: float):
-    """Helper to build a fake GenAI response payload"""
     return {
         "body": json.dumps({
             "choices": [
@@ -79,10 +78,12 @@ def test_missing_status_code_returns_zero(monkeypatch):
 
 
 def test_extract_status_code_valid():
-    assert extract_status_code("Final Response -- Status Code : 1") == 1.0
-    assert extract_status_code("Final Response -- Status Code : 0.5") == 0.5
-    assert extract_status_code("Final Response -- Status Code : 0") == 0.0
+    extract = rp.extract_status_code
+    assert extract("Final Response -- Status Code : 1") == 1.0
+    assert extract("Final Response -- Status Code : 0.5") == 0.5
+    assert extract("Final Response -- Status Code : 0") == 0.0
 
 
 def test_extract_status_code_invalid():
-    assert extract_status_code("garbage") == 0.0
+    extract = rp.extract_status_code
+    assert extract("garbage") == 0.0
