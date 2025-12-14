@@ -4,6 +4,15 @@
 "Test for both huggingface and github links "
 "Test for model and code"
 
+import sys
+import os
+
+# Ensure backend/Rate is on the import path (matches legacy test behavior)
+RATE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "backend", "Rate"))
+if RATE_DIR not in sys.path:
+    sys.path.insert(0, RATE_DIR)
+
+
 import json
 import os
 import boto3
