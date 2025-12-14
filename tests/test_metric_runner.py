@@ -6,13 +6,11 @@ import sys
 import types
 from unittest.mock import MagicMock, patch
 
+pytestmark = pytest.mark.usefixtures("isolated_metric_runner_env")
 
-@pytest.fixture(autouse=True, scope="module")
+
+@pytest.fixture
 def isolated_metric_runner_env():
-    """
-    Inject fake modules BEFORE metric_runner is imported.
-    Module-scoped so pytest collection cannot race imports.
-    """
     original_modules = sys.modules.copy()
 
     injected = {
@@ -20,10 +18,8 @@ def isolated_metric_runner_env():
         "metrics.registry",
         "metrics.utils",
         "run_metrics",
-        "backend.Rate.metric_runner",
     }
 
-    # ---- Fake metrics.registry ----
     fake_metrics_pkg = types.ModuleType("metrics")
     fake_registry_mod = types.ModuleType("metrics.registry")
     fake_registry_mod.METRIC_REGISTRY = [
@@ -35,21 +31,18 @@ def isolated_metric_runner_env():
     sys.modules["metrics"] = fake_metrics_pkg
     sys.modules["metrics.registry"] = fake_registry_mod
 
-    # ---- Fake run_metrics ----
     fake_run_metrics = types.ModuleType("run_metrics")
     fake_run_metrics.calculate_net_score = lambda results: 0.85
     sys.modules["run_metrics"] = fake_run_metrics
 
-    # ---- Fake metrics.utils ----
     fake_utils = types.ModuleType("metrics.utils")
     fake_utils.fetch_hf_readme_text = lambda _: "README TEXT"
     sys.modules["metrics.utils"] = fake_utils
 
     yield
 
-    # ---- CLEANUP ----
-    for name in injected:
-        sys.modules.pop(name, None)
+    for k in injected:
+        sys.modules.pop(k, None)
 
     for k, v in original_modules.items():
         if k not in sys.modules:
@@ -123,16 +116,24 @@ def test_metric_failure_returns_424(metric_runner):
 
 
 def test_successful_run(metric_runner):
-    resp = metric_runner(
-        {
-            "artifact_type": "model",
-            "source_url": "https://huggingface.co/test",
-            "name": "m",
-        },
-        None,
-    )
+    passing_registry = [
+        ("metricA", lambda *_: (0.95, 10)),
+        ("metricB", lambda *_: (0.95, 10)),
+    ]
+
+    with patch("backend.Rate.metric_runner.METRIC_REGISTRY", passing_registry):
+        resp = metric_runner(
+            {
+                "artifact_type": "model",
+                "source_url": "https://huggingface.co/test",
+                "name": "m",
+            },
+            None,
+        )
+
     assert resp["statusCode"] == 201
     assert resp["body"] == "OK"
+
 
 
 def test_non_model_artifact_skips_metrics(metric_runner):
@@ -159,10 +160,16 @@ def test_metric_execution_exception(metric_runner):
 
 
 def test_upload_returns_function_error(metric_runner):
+    passing_registry = [
+        ("metricA", lambda *_: (0.95, 10)),
+    ]
+
     payload = MagicMock()
     payload.read.return_value = b'{"error":"bad"}'
 
-    with patch("backend.Rate.metric_runner.lambda_client") as mock_lambda:
+    with patch("backend.Rate.metric_runner.METRIC_REGISTRY", passing_registry), \
+         patch("backend.Rate.metric_runner.lambda_client") as mock_lambda:
+
         mock_lambda.invoke.return_value = {
             "FunctionError": "Unhandled",
             "Payload": payload,
@@ -177,7 +184,13 @@ def test_upload_returns_function_error(metric_runner):
 
 
 def test_upload_invocation_raises(metric_runner):
-    with patch("backend.Rate.metric_runner.lambda_client") as mock_lambda:
+    passing_registry = [
+        ("metricA", lambda *_: (0.95, 10)),
+    ]
+
+    with patch("backend.Rate.metric_runner.METRIC_REGISTRY", passing_registry), \
+         patch("backend.Rate.metric_runner.lambda_client") as mock_lambda:
+
         mock_lambda.invoke.side_effect = RuntimeError("boom")
 
         resp = metric_runner(
@@ -186,3 +199,5 @@ def test_upload_invocation_raises(metric_runner):
         )
 
     assert resp["statusCode"] == 500
+
+
