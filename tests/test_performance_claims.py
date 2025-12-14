@@ -1,21 +1,7 @@
 # tests/test_performance_claims.py
 
-import importlib
-from unittest.mock import MagicMock
 import pytest
-
 import backend.Rate.metrics.performance_claims as pc
-
-
-@pytest.fixture(autouse=True)
-def _fresh_module():
-    """
-    CI-safe: ensure we are testing the real module, not a function object
-    imported earlier that got monkeypatched by another test.
-    """
-    importlib.reload(pc)
-    yield
-    importlib.reload(pc)
 
 
 def test_readme_has_text_returns_one(monkeypatch):

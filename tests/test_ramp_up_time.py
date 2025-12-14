@@ -1,21 +1,10 @@
 # tests/test_ramp_up_time.py
 
-import importlib
 import pytest
 from unittest.mock import MagicMock
 
 import backend.Rate.metrics.ramp_up_time as rut
 
-
-@pytest.fixture(autouse=True)
-def _fresh_module():
-    """
-    CI-safe: ensure we are testing the real module, not a function object
-    imported earlier that got monkeypatched by another test.
-    """
-    importlib.reload(rut)
-    yield
-    importlib.reload(rut)
 
 
 def test_http_model_id_returns_none(monkeypatch):

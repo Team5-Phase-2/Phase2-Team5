@@ -2,187 +2,142 @@
 
 import json
 import pytest
-import sys
-import types
 from unittest.mock import MagicMock, patch
 
-
-@pytest.fixture(autouse=True)
-def isolated_metric_runner_env():
-    """
-    Provide fake modules ONLY during metric_runner tests.
-    Never use monkeypatch here (scope mismatch).
-    """
-    original_modules = sys.modules.copy()
-
-    injected = {
-        "metrics",
-        "metrics.registry",
-        "metrics.utils",
-        "run_metrics",
-    }
-
-    # ---- Fake metrics.registry ----
-    fake_metrics_pkg = types.ModuleType("metrics")
-    fake_registry_mod = types.ModuleType("metrics.registry")
-    fake_registry_mod.METRIC_REGISTRY = [
-        ("metricA", lambda u, c, d: (0.9, 10)),
-        ("metricB", lambda u, c, d: (0.8, 20)),
-    ]
-    fake_metrics_pkg.registry = fake_registry_mod
-
-    sys.modules["metrics"] = fake_metrics_pkg
-    sys.modules["metrics.registry"] = fake_registry_mod
-
-    # ---- Fake run_metrics ----
-    fake_run_metrics = types.ModuleType("run_metrics")
-    fake_run_metrics.calculate_net_score = lambda results: 0.85
-    sys.modules["run_metrics"] = fake_run_metrics
-
-    # ---- Fake metrics.utils ----
-    fake_utils = types.ModuleType("metrics.utils")
-    fake_utils.fetch_hf_readme_text = lambda _: "README TEXT"
-    sys.modules["metrics.utils"] = fake_utils
-
-    yield
-
-    # ✅ SAFE cleanup (no sys.modules.clear!)
-    for k in injected:
-        sys.modules.pop(k, None)
-
-    for k, v in original_modules.items():
-        if k not in sys.modules:
-            sys.modules[k] = v
-
-
-@pytest.fixture
-def metric_runner():
-    from backend.Rate.metric_runner import run_all_metrics
-    return run_all_metrics
+import backend.Rate.metric_runner as mr
 
 
 @pytest.fixture(autouse=True)
 def mock_aws_clients():
-    with patch("backend.Rate.metric_runner.boto3.client") as mock_boto, \
-         patch("backend.Rate.metric_runner.lambda_client") as mock_lambda:
-
+    """
+    Patch Bedrock + Upload lambda clients used by metric_runner.
+    """
+    with patch.object(mr.boto3, "client") as mock_boto, patch.object(mr, "lambda_client") as mock_lambda:
         # ---- Bedrock mock ----
         bedrock = MagicMock()
         bedrock.invoke_model.return_value = {
             "body": MagicMock(
-                read=lambda: json.dumps({
-                    "output": {
-                        "message": {
-                            "content": [{"text": "https://github.com/repo"}]
+                read=lambda: json.dumps(
+                    {
+                        "output": {
+                            "message": {
+                                "content": [
+                                    {"text": "https://github.com/repo, https://dataset.org"}
+                                ]
+                            }
                         }
                     }
-                }).encode()
+                ).encode("utf-8")
             )
         }
         mock_boto.return_value = bedrock
 
-        # ---- Upload mock ----
+        # ---- Upload mock (default success) ----
         payload = MagicMock()
-        payload.read.return_value = json.dumps({
-            "statusCode": 201,
-            "body": "OK"
-        }).encode()
-
+        payload.read.return_value = json.dumps({"statusCode": 201, "body": "OK"}).encode("utf-8")
         mock_lambda.invoke.return_value = {"Payload": payload}
 
         yield
 
 
-def test_missing_artifact_type(metric_runner):
-    resp = metric_runner({"artifact_type": None, "source_url": None}, None)
+@pytest.fixture(autouse=True)
+def fake_readme():
+    # metric_runner requires README for model artifacts
+    with patch.object(mr, "fetch_hf_readme_text", return_value="README TEXT"):
+        yield
+
+
+@pytest.fixture(autouse=True)
+def fake_net_score():
+    # if metric_runner calls calculate_net_score, keep it deterministic
+    if hasattr(mr, "calculate_net_score"):
+        with patch.object(mr, "calculate_net_score", return_value=0.85):
+            yield
+    else:
+        yield
+
+
+def test_missing_artifact_type():
+    resp = mr.run_all_metrics({"artifact_type": None, "source_url": None}, None)
     assert resp["statusCode"] == 400
+    body = json.loads(resp["body"])
+    assert "Missing artifact_type or source_url" in body["error"]
 
 
-def test_readme_fetch_failure(metric_runner):
-    with patch("backend.Rate.metric_runner.fetch_hf_readme_text", return_value=None):
-        resp = metric_runner(
-            {"artifact_type": "model", "source_url": "x", "name": "m"},
-            None,
-        )
+def test_readme_fetch_failure():
+    with patch.object(mr, "fetch_hf_readme_text", return_value=None):
+        resp = mr.run_all_metrics({"artifact_type": "model", "source_url": "x", "name": "m"}, None)
     assert resp["statusCode"] == 500
+    body = json.loads(resp["body"])
+    assert "Failed to fetch README" in body["error"]
 
 
-def test_metric_failure_returns_424(metric_runner):
+def test_metric_failure_returns_424():
     failing_registry = [
-        ("metricA", lambda *_: (0.1, 10)),
-        ("metricB", lambda *_: (0.9, 10)),
+        ("metricA", lambda u, c, d: (0.1, 10)),
+        ("metricB", lambda u, c, d: (0.9, 20)),
     ]
-
-    with patch("backend.Rate.metric_runner.METRIC_REGISTRY", failing_registry):
-        resp = metric_runner(
-            {"artifact_type": "model", "source_url": "x", "name": "m"},
-            None,
-        )
+    with patch.object(mr, "METRIC_REGISTRY", failing_registry):
+        resp = mr.run_all_metrics({"artifact_type": "model", "source_url": "x", "name": "m"}, None)
 
     assert resp["statusCode"] == 424
+    body = json.loads(resp["body"])
+    assert "failed to pass metric checks" in body["error"].lower()
 
 
-def test_successful_run(metric_runner):
-    resp = metric_runner(
-        {
-            "artifact_type": "model",
-            "source_url": "https://huggingface.co/test",
-            "name": "m",
-        },
-        None,
-    )
+def test_successful_run():
+    passing_registry = [
+        ("metricA", lambda u, c, d: (0.9, 10)),
+        ("metricB", lambda u, c, d: (0.8, 20)),
+    ]
+    with patch.object(mr, "METRIC_REGISTRY", passing_registry):
+        resp = mr.run_all_metrics(
+            {"artifact_type": "model", "source_url": "https://huggingface.co/test", "name": "model1"},
+            None,
+        )
+
     assert resp["statusCode"] == 201
     assert resp["body"] == "OK"
 
 
-def test_non_model_artifact_skips_metrics(metric_runner):
-    resp = metric_runner(
-        {"artifact_type": "dataset", "source_url": "x", "name": "d"},
-        None,
-    )
+def test_non_model_artifact_skips_metrics():
+    resp = mr.run_all_metrics({"artifact_type": "dataset", "source_url": "x", "name": "d"}, None)
     assert resp["statusCode"] == 201
+    assert resp["body"] == "OK"
 
 
-def test_metric_execution_exception(metric_runner):
+def test_metric_execution_exception_returns_424():
     bad_registry = [
-        ("metricA", lambda *_: (_ for _ in ()).throw(RuntimeError("fail"))),
-        ("metricB", lambda *_: (0.9, 10)),
+        ("metricA", lambda u, c, d: (_ for _ in ()).throw(RuntimeError("fail"))),
+        ("metricB", lambda u, c, d: (0.9, 20)),
     ]
-
-    with patch("backend.Rate.metric_runner.METRIC_REGISTRY", bad_registry):
-        resp = metric_runner(
-            {"artifact_type": "model", "source_url": "x", "name": "m"},
-            None,
-        )
+    with patch.object(mr, "METRIC_REGISTRY", bad_registry):
+        resp = mr.run_all_metrics({"artifact_type": "model", "source_url": "x", "name": "m"}, None)
 
     assert resp["statusCode"] == 424
 
 
-def test_upload_returns_function_error(metric_runner):
-    payload = MagicMock()
-    payload.read.return_value = b'{"error":"bad"}'
+def test_upload_returns_function_error():
+    passing_registry = [("metricA", lambda u, c, d: (0.9, 10))]
+    with patch.object(mr, "METRIC_REGISTRY", passing_registry), patch.object(mr, "lambda_client") as mock_lambda:
+        payload = MagicMock()
+        payload.read.return_value = b'{"bad":"error"}'
+        mock_lambda.invoke.return_value = {"FunctionError": "Unhandled", "Payload": payload}
 
-    with patch("backend.Rate.metric_runner.lambda_client") as mock_lambda:
-        mock_lambda.invoke.return_value = {
-            "FunctionError": "Unhandled",
-            "Payload": payload,
-        }
-
-        resp = metric_runner(
-            {"artifact_type": "model", "source_url": "x", "name": "m"},
-            None,
-        )
+        resp = mr.run_all_metrics({"artifact_type": "model", "source_url": "x", "name": "m"}, None)
 
     assert resp["statusCode"] == 500
+    body = json.loads(resp["body"])
+    assert "ingestor service" in body["error"].lower()
 
 
-def test_upload_invocation_raises(metric_runner):
-    with patch("backend.Rate.metric_runner.lambda_client") as mock_lambda:
+def test_upload_invocation_raises_exception():
+    passing_registry = [("metricA", lambda u, c, d: (0.9, 10))]
+    with patch.object(mr, "METRIC_REGISTRY", passing_registry), patch.object(mr, "lambda_client") as mock_lambda:
         mock_lambda.invoke.side_effect = RuntimeError("boom")
 
-        resp = metric_runner(
-            {"artifact_type": "model", "source_url": "x", "name": "m"},
-            None,
-        )
+        resp = mr.run_all_metrics({"artifact_type": "model", "source_url": "x", "name": "m"}, None)
 
     assert resp["statusCode"] == 500
+    body = json.loads(resp["body"])
+    assert "internal error" in body["error"].lower()
