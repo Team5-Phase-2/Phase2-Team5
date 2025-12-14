@@ -36,9 +36,6 @@ def reviewedness(model_url: str, code_url: str, dataset_url: str) -> Tuple[float
             - total latency in milliseconds
     """
 
-    #print("\n>>")
-    #print("[DEBUG] Checking URL:", model_url)
-
     #Start timer
     start_time = time.time_ns()
 
@@ -50,23 +47,25 @@ def reviewedness(model_url: str, code_url: str, dataset_url: str) -> Tuple[float
 
     #Extract GitHub repo from URL
     def extract_github_repo(text: str):
+        """
+        Extract the owner and repository name from a GitHub URL found in the given text.
+        """
         match = re.search(r"github\.com/([A-Za-z0-9_.-]+)/([A-Za-z0-9_.-]+)", text)
         if match:
-            #print("[DEBUG] Extracted GitHub repo from text:", match.group(0))
+
             return match.group(1), match.group(2)
         return None
 
-    # Find GitHub repo from HuggingFace HTML
     def find_github_repo_from_hf_html(model_url: str):
-        #print("[DEBUG] Fetching HF HTML:", model_url)
-
+        """
+        Fetch a Hugging Face model page and attempt to extract a linked
+        GitHub repository from the HTML content.
+        """
         #Get Model Card from HuggingFace
         try:
             resp = requests.get(model_url, timeout=10)
             html = resp.text
-            #print("[DEBUG] HF HTML status:", resp.status_code)
         except Exception as e:
-            #print("[DEBUG] HF HTML failed:", e)
             return None
 
         #GitHub repo links
@@ -80,10 +79,9 @@ def reviewedness(model_url: str, code_url: str, dataset_url: str) -> Tuple[float
         for p in patterns:
             match = re.search(p, html)
             if match:
-                #print("[DEBUG] Found GitHub via pattern:", match.group(0))
+
                 return match.group(1), match.group(2)
 
-        #print("[DEBUG] No GitHub link found in HF HTML.")
         return None
 
     #First Check URL is github link
@@ -95,11 +93,9 @@ def reviewedness(model_url: str, code_url: str, dataset_url: str) -> Tuple[float
 
    #If link is not found, return -1
     if not owner_repo:
-        #print("[DEBUG] No GitHub repo found → returning -1")
+
         latency_ms = (time.time_ns() - start_time) // 1_000_000
         return -1, latency_ms
-
-    #print("[DEBUG] Final extracted repo:", owner_repo)
 
     owner, repo = owner_repo
     base_api = f"https://api.github.com/repos/{owner}/{repo}"
@@ -109,19 +105,15 @@ def reviewedness(model_url: str, code_url: str, dataset_url: str) -> Tuple[float
     prs_url = (
         f"{base_api}/pulls?state=closed&per_page={MAX_PRS}&sort=updated&direction=desc"
     )
-    #print("[DEBUG] Fetching PR list:", prs_url)
 
     #Check pull requests
     prs_resp = requests.get(prs_url, headers=headers, timeout=10)
     if prs_resp.status_code != 200:
-        #print("[DEBUG] Failed to fetch PRs:", prs_resp.status_code)
         #if failed to get PRs return -1
         latency_ms = (time.time_ns() - start_time) // 1_000_000
         return -1, latency_ms
 
     prs = prs_resp.json()
-    #print("[DEBUG] PR count:", len(prs))
-
     #if not closed PRs return -1
     if not prs:
         print("[DEBUG] Zero PRs found.")
@@ -166,12 +158,10 @@ def reviewedness(model_url: str, code_url: str, dataset_url: str) -> Tuple[float
 
     #compute score
     if total_added == 0:
-        #print("[DEBUG] No code additions found.")
         latency_ms = (time.time_ns() - start_time) // 1_000_000
         return 0, latency_ms
 
     score = round(reviewed_added / total_added, 3)
-    #print("[DEBUG] FINAL SCORE:", score)
 
     latency_ms = (time.time_ns() - start_time) // 1_000_000
     return score, latency_ms

@@ -5,12 +5,13 @@ results and invoke the Upload/ingestor lambda. Exposes `run_all_metrics`
 which accepts an event and context and returns an API Gateway-style
 response dict.
 """
-from concurrent.futures import ThreadPoolExecutor, as_completed
-from metrics.registry import METRIC_REGISTRY
+
 import json
-from run_metrics import calculate_net_score
 import boto3
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from run_metrics import calculate_net_score
 from metrics.utils import fetch_hf_readme_text
+from metrics.registry import METRIC_REGISTRY
 from botocore.config import Config
 
 lambda_client = boto3.client('lambda')
@@ -133,14 +134,13 @@ def run_all_metrics(event, context):
                 dataset_url = urls[1]
             else:
                 code_url = None
-                dataset_url = None 
-
+                dataset_url = None
         except Exception as e:
             code_url = None
             dataset_url = None
 
         max_workers = 10
-        
+
         results = {}
         with ThreadPoolExecutor(max_workers=max_workers) as executor:
             future_to_key = {
@@ -152,18 +152,18 @@ def run_all_metrics(event, context):
                 key = future_to_key[future]
                 try:
                     score_latency = future.result()
-                    
+
                     if isinstance(score_latency, tuple) and len(score_latency) == 2:
                         results[key] = score_latency
                     else:
                         results[key] = (score_latency, 0)
                 except Exception:
                     results[key] = (None, 0)
-        
+
         net_score = calculate_net_score(results)
 
         # 3. Determine whether to ingest (example rule)
-        
+
         for k, (score, latency) in results.items():
             if score is None or score < 0.5:
                 return {
@@ -172,8 +172,6 @@ def run_all_metrics(event, context):
                         "error": f"Model failed to pass metric checks: {k}: {score}"
                     })
                 }
-        
-        
     output_payload = {
         "artifact_type": artifact_type,
         "model_url": model_url,
@@ -190,17 +188,17 @@ def run_all_metrics(event, context):
             InvocationType='RequestResponse',
             Payload=json.dumps(output_payload)
         )
-        
+
         # Check for errors from the Ingestor
         if 'FunctionError' in ingestor_response:
                 # If the Ingestor failed, tell the client it was a server error
                 error_payload = ingestor_response['Payload'].read().decode('utf-8')
                 print(f"Ingestor failed: {error_payload}")
                 return {
-                "statusCode": 500,
-                "body": json.dumps({"error": "Processing failed in the Ingestor service."})
-            }
-            
+                    "statusCode": 500,
+                    "body": json.dumps({"error": "Processing failed in the Ingestor service."})
+                }
+
         # If Ingestor succeeded, assume it returns a clean API Gateway-compatible response
         # Read and parse the Ingestor's clean response
         ingestor_result_str = ingestor_response['Payload'].read().decode('utf-8')
@@ -208,7 +206,7 @@ def run_all_metrics(event, context):
 
         # Return the Ingestor's statusCode and body back up the chain to the API client
         return ingestor_result
-    
+
     except Exception as e:
         print(f"CRITICAL ERROR during synchronous Ingestor invocation: {e}")
         return {

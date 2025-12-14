@@ -254,4 +254,3 @@ def test_lambda_handler_degraded_return_line(mock_env_small):
 
     body = json.loads(resp["body"])
     assert body["status"] == "DEGRADED"
-

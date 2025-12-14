@@ -26,8 +26,6 @@ def get_artifact_handler(event, context):
         dict: API Gateway response with `statusCode` and `body`.
     """
 
-    print("Received event:", json.dumps(event))
-
     # Read configured registry bucket
     s3_bucket = os.environ.get("REGISTRY_BUCKET")
     if not s3_bucket:
@@ -37,8 +35,8 @@ def get_artifact_handler(event, context):
 
     # Extract parameters from the incoming request
     path_params = event.get("pathParameters", {}) or {}
-    artifact_type = path_params.get("artifact_type")
-    model_id = path_params.get("id")
+    artifact_type = path_params.get("artifact_type") or {}
+    model_id = path_params.get("id") or {}
 
     #if not artifact_type or not model_id:
     if not artifact_type or not model_id:
@@ -57,13 +55,11 @@ def get_artifact_handler(event, context):
     except ClientError as e:
         if e.response["Error"]["Code"] == "NoSuchKey":
             return {"statusCode": 404, "body": json.dumps({"error": f"Artifact with ID {model_id} not found."})}
-        else:
-            return {"statusCode": 400, "body": json.dumps({"error": "Error retrieving artifact", "detail": str(e)})}
+        return {"statusCode": 400, "body": json.dumps({"error": "Error retrieving artifact", "detail": str(e)})}
     except Exception as e:
         return {"statusCode": 400, "body": json.dumps({"error": "Unhandled error", "detail": str(e)})}
 
-    # Validate required fields exist in the stored artifact
-    
+    # Validate required fields exist in the stored artifact data
     name = artifact_data.get("name")
     model_url = artifact_data.get("model_url")
     artifact_type = artifact_data.get("type")

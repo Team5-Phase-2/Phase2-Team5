@@ -56,8 +56,8 @@ def size_score(model_url: str, code_url: str, dataset_url: str) -> Tuple[Optiona
         )
 
         # Inspect sibling files declared in model metadata for weight artifacts
-        for s in siblings:
-            name = (s.get("rfilename") or "").strip()
+        for sib in siblings:
+            name = (sib.get("rfilename") or "").strip()
             if not name:
                 continue
             lower = name.lower()
@@ -68,20 +68,20 @@ def size_score(model_url: str, code_url: str, dataset_url: str) -> Tuple[Optiona
             size_bytes = None
             url = f"https://huggingface.co/{model_id}/resolve/{head}/{name}"
             try:
-                h = requests.head(url, allow_redirects=True, timeout=(2.0, 5.0))
-                cl = h.headers.get("Content-Length")
-                if cl and cl.isdigit():
-                    size_bytes = int(cl)
+                huggingface_resp = requests.head(url, allow_redirects=True, timeout=(2.0, 5.0))
+                content = huggingface_resp.headers.get("Content-Length")
+                if content and content.isdigit():
+                    size_bytes = int(content)
             except Exception:
                 size_bytes = None
 
             # Fallback: attempt ranged GET to discover total size from Content-Range
             if size_bytes is None:
                 try:
-                    g = requests.get(url, headers={"Range": "bytes=0-0"}, stream=True, timeout=(2.0, 6.0))
-                    cr = g.headers.get("Content-Range")
-                    if cr and "/" in cr:
-                        after_slash = cr.split("/", 1)[1].strip()
+                    get = requests.get(url, headers={"Range": "bytes=0-0"}, stream=True, timeout=(2.0, 6.0))
+                    content = get.headers.get("Content-Range")
+                    if content and "/" in content:
+                        after_slash = content.split("/", 1)[1].strip()
                         if after_slash.isdigit():
                             size_bytes = int(after_slash)
                 except Exception:
@@ -159,14 +159,9 @@ def size_score(model_url: str, code_url: str, dataset_url: str) -> Tuple[Optiona
             device_scores["aws_server"] = 0.0
 
         device_scores = {k: round(float(v), 3) for k, v in device_scores.items()}
-        #score = round(sum(device_scores.values()) / 4.0, 3)
-        #combined_score = {"breakdown": device_scores,
-        #                  "average_score": score}
         
         latency_ms = (time.time_ns() - start_ns) // 1_000_000
         return device_scores, latency_ms
-        #return score, latency_ms
-        #return device_scores, latency_ms
 
     except Exception:
         latency_ms = (time.time_ns() - start_ns) // 1_000_000

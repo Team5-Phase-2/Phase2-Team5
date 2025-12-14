@@ -5,10 +5,10 @@ mapping pylint scores into a small normalized scale.
 """
 
 from typing import Optional, Tuple
-import time, tempfile, subprocess, sys, os, requests
+import time
 from urllib.parse import urlparse
 from .utils import analyze_code
-
+import requests
 
 def code_quality(model_url: str, code_url: str, dataset_url: str) -> Tuple[Optional[float], int]:
     """Return (score, latency_ms) assessing repository code quality.
@@ -26,9 +26,9 @@ def code_quality(model_url: str, code_url: str, dataset_url: str) -> Tuple[Optio
             latency_ms = (time.time_ns() - start_ns) // 1_000_000
             return 0.5, latency_ms
         path_parts = [part for part in parsed_url.path.split('/') if part]
-        
-        # A standard GitHub repository URL is /owner/repo
-        
+
+        owner = None
+        repo = None
         if len(path_parts) >= 2:
             owner = path_parts[0]
             repo = path_parts[1]
@@ -40,11 +40,9 @@ def code_quality(model_url: str, code_url: str, dataset_url: str) -> Tuple[Optio
             latency_ms = (time.time_ns() - start_ns) // 1_000_000
             return 0.5, latency_ms
 
-
-        
         contents_api_url = f"https://api.github.com/repos/{owner}/{repo}/contents"
         response = requests.get(contents_api_url, timeout=10)
-        
+
         if response.status_code != 200:
             print(f"Failed to fetch repo contents. Status: {response.status_code}")
             return 0.5, (time.time_ns() - start_ns) // 1_000_000
@@ -91,7 +89,6 @@ def _analyze_with_pylint(code_content: str, filename: str) -> Optional[float]:
     the textual output. Returns mapped score buckets or None when analysis
     cannot be completed.
     """
-
     try:
         return analyze_code(code_content)
     except Exception as e:

@@ -49,29 +49,28 @@ def has_real_metrics(text: str) -> bool:
 def _has_real_metrics(text: str) -> bool:
     """Internal implementation of the metric-detection heuristics."""
 
-    t = text.lower()
+    text = text.lower()
 
     # 1) If a model-index YAML contains numeric metrics use that as a positive
     # signal (explicit structured metadata trumps heuristics).
-    if ("model-index" in t and "metrics:" in t and re.search(r"\bvalue\s*:\s*[-+]?\d+(?:\.\d+)?", t)):
+    if ("model-index" in text and "metrics:" in text and re.search(r"\bvalue\s*:\s*[-+]?\d+(?:\.\d+)?", text)):
         return True
 
     # 2) If placeholder phrases appear in evaluation sections, treat them as
     # not-yet-provided and continue scanning other parts.
-    if any(p in t for p in _PLACEHOLDER_WORDS):
+    if any(placeholder in text  for placeholder in _PLACEHOLDER_WORDS):
         pass
 
     # 3) Prefer examining explicit evaluation-like sections if present.
-    sections = _extract_eval_like_sections(t)
-
+    sections = _extract_eval_like_sections(text)
     # If no explicit section, just scan the whole text with proximity rule
     if not sections:
-        sections = [t]
+        sections = [text]
 
     # Proximity rule: a metric word should appear near a numeric token.
     WINDOW = 100
     for s in sections:
-        if any(p in s for p in _PLACEHOLDER_WORDS):
+        if any(place_holder in s for place_holder   in _PLACEHOLDER_WORDS):
             # If the section is a placeholder, ignore it
             continue
 
@@ -80,8 +79,8 @@ def _has_real_metrics(text: str) -> bool:
             continue
 
         # proximity scan
-        for m in _NUM_RE.finditer(s):
-            num_start = m.start()
+        for match in _NUM_RE.finditer(s):
+            num_start = match.start()
             # Skip obvious dates/versions near numbers
             if _DATE_VER_RE.search(s[max(0, num_start - 10):num_start + 10]):
                 continue
@@ -100,14 +99,14 @@ def _has_real_metrics(text: str) -> bool:
     return False
 
 
-def _extract_eval_like_sections(t: str) -> list[str]:
+def _extract_eval_like_sections(text: str) -> list[str]:
     """Return sections of text whose headings indicate evaluation/results.
 
     Splits text on markdown headings and returns parts whose heading line
     matches evaluation/benchmark/performance keywords.
     """
 
-    parts = re.split(r"\n(?=#{1,6}\s)", t)
+    parts = re.split(r"\n(?=#{1,6}\s)", text)
     out = []
     for part in parts:
         # grab heading line
@@ -117,10 +116,10 @@ def _extract_eval_like_sections(t: str) -> list[str]:
     return out
 
 
-def _looks_like_metric_table(s: str) -> bool:
+def _looks_like_metric_table(sibling: str) -> bool:
     """Heuristic to detect markdown tables that contain metric values."""
 
-    tables = re.findall(r"(?:\n\|.*\|\n\|[-:\s|]+\|\n(?:\|.*\|\n)+)", s)
+    tables = re.findall(r"(?:\n\|.*\|\n\|[-:\s|]+\|\n(?:\|.*\|\n)+)", sibling)
     for tbl in tables:
         header = tbl.splitlines()[1] if len(tbl.splitlines()) >= 2 else ""
         if any(w in header for w in _METRIC_WORDS):

@@ -6,10 +6,10 @@ them, and 0.0 if neither is found.
 """
 
 from typing import Optional, Tuple
-import time, requests
+import time
 from scoring import _hf_model_id_from_url
 from .utils import fetch_hf_readme_text
-import boto3
+import requests
 
 def dataset_and_code_score(model_url: str, code_url: str, dataset_url: str) -> Tuple[Optional[float], int]:
     """Return a combined dataset-and-code availability score and latency.
@@ -50,8 +50,8 @@ def dataset_and_code_score(model_url: str, code_url: str, dataset_url: str) -> T
                 dataset_available = True
 
             # Look for sibling files that are Python scripts
-            for s in (info.get("siblings") or []):
-                fn = (s.get("rfilename") or "").lower()
+            for sibling in (info.get("siblings") or []):
+                fn = (sibling.get("rfilename") or "").lower()
                 if fn.endswith(".py"):
                     code_available = True
                     break
@@ -60,7 +60,7 @@ def dataset_and_code_score(model_url: str, code_url: str, dataset_url: str) -> T
         if not code_available:
             readme = fetch_hf_readme_text(model_id)
             if readme:
-                low = readme.lower()
+                lower_case = readme.lower()
                 strong_python_signals = (
                     "```python",
                     "from transformers import",
@@ -69,7 +69,7 @@ def dataset_and_code_score(model_url: str, code_url: str, dataset_url: str) -> T
                     "pipeline(",
                     "pip install transformers",
                 )
-                if any(k in low for k in strong_python_signals):
+                if any(flag in lower_case for flag in strong_python_signals):
                     code_available = True
 
         if dataset_available and code_available:

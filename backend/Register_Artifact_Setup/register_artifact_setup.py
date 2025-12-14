@@ -28,7 +28,7 @@ def lambda_handler(event, context):
 
     # Extract artifact_type from path parameters (API Gateway proxy integration)
     path_params = event.get("pathParameters", {}) or {}
-    artifact_type = path_params.get("artifact_type")
+    artifact_type = path_params.get("artifact_type") or {}
 
     # Parse body and extract URL
     try:

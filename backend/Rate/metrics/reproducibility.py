@@ -12,8 +12,6 @@ import time
 import re
 import json
 from typing import Optional, Tuple
-from urllib.parse import urlparse
-
 from .utils import query_genai, fetch_hf_readme_text
 
 def reproducibility(model_url: str, code_url: str, dataset_url: str) -> Tuple[Optional[float], int]:
@@ -39,11 +37,11 @@ def reproducibility(model_url: str, code_url: str, dataset_url: str) -> Tuple[Op
     # '1) Run the example code give in the readme and return a status code 1 if it works strait out of the box.' \
     # '2) If it doesn’t work see if you can fix it. After 2 attempts to fix it, if it works return a status code 0.5 otherwise return status code 0.' \
     # 'Respond with the formate: "Final Respose -- Status Code : <>"'
-    
+
     # query: str = f'Please execute the example code from the README at {model_url} without simulating errors or assumptions. Assume all necessary prerequisites are met, and the code will be executed in a standard environment with no errors or exceptions.' \
     # 'Provide a status code of 1 if the code works straight out of the box, 0.5 if it works after 2 attempts to fix it, and 0 otherwise.' \
     # 'Respond with the formate: "Final Response -- Status Code : <>"'
-    
+
     query: str = f"""
         [SYSTEM ROLE]
         You are an execution analyst responsible for evaluating whether example code from a 
@@ -93,28 +91,28 @@ def reproducibility(model_url: str, code_url: str, dataset_url: str) -> Tuple[Op
 
         Final Response -- Status Code: <value>
         """
-    
+
     resp: dict = query_genai(query)
     if resp == "Error":
         return 0.0, (time.time_ns() - start_ns) // 1_000_000
     # Load the JSON response
     response_json = json.loads(resp['body'])
-    
+
     # Extract the content from the message
     content = response_json['choices'][0]['message']['content']
-    # print(content)
-    
-    # print(resp)
+
     score: float = extract_status_code(content)
-    
+
     latency: int = (time.time_ns() - start_ns) // 1_000_000
     return score, latency
-    
+
 def extract_status_code(response: str) -> float:
+    """
+    Extract a numeric HTTP status code from a response string using a regex.
+    Returns 0.0 if no status code is found.
+    """
     pattern = r"Final Response -- Status Code : (\d+(?:\.\d+)?)"
     match = re.search(pattern, response)
     if match:
         return float(match.group(1))
-    else:
-        return 0.0
-
+    return 0.0

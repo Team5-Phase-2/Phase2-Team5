@@ -7,9 +7,12 @@ Returns (score, latency_ms) where score is in [0,1] or None on error.
 """
 
 from typing import Optional, Tuple
-import time, requests, re
+import time
+import re
+import requests
 from scoring import _hf_model_id_from_url
 from .utils import fetch_hf_readme_text
+
 
 
 def dataset_quality(model_url: str, code_url: str, dataset_url: str) -> Tuple[Optional[float], int]:
@@ -27,7 +30,6 @@ def dataset_quality(model_url: str, code_url: str, dataset_url: str) -> Tuple[Op
             return 0.0, (time.time_ns() - start_ns) // 1_000_000
 
         text = readme
-        low = text.lower()
 
         # Try to extract any datasets listed in the model card via the API
         api_ds = []
@@ -36,22 +38,22 @@ def dataset_quality(model_url: str, code_url: str, dataset_url: str) -> Tuple[Op
             if api.status_code == 200:
                 info = api.json()
                 card = info.get("cardData") or {}
-                ds = card.get("datasets") or []
-                if isinstance(ds, list):
-                    api_ds = [str(x).lower() for x in ds if x]
+                dataset = card.get("datasets") or []
+                if isinstance(dataset, list):
+                    api_ds = [str(x).lower() for x in dataset if x]
         except Exception:
             # Ignore API failures; continue with README heuristics
             pass
 
         # Look for explicit dataset/training data sections in the README
         sec = None
-        for pat in (
+        for pattern in (
             r"(?ims)^[ \t]*#{1,6}[ \t]*(dataset|datasets)\b[^\n]*\n(.*?)(?=^[ \t]*#{1,6}[ \t]+\S|\Z)",
             r"(?ims)^[ \t]*#{1,6}[ \t]*(training data|pre[- ]?training data|pre[- ]?trained on|data|corpus)\b[^\n]*\n(.*?)(?=^[ \t]*#{1,6}[ \t]+\S|\Z)",
         ):
-            m = re.search(pat, text)
-            if m:
-                sec = m.group(2)
+            match = re.search(pattern, text)
+            if match:
+                sec = match.group(2)
                 break
         section = (sec or text).lower()
 
@@ -75,7 +77,7 @@ def dataset_quality(model_url: str, code_url: str, dataset_url: str) -> Tuple[Op
             "train/val", "train/valid", "train/test", "validation set", "evaluation set",
             "data cleaning", "preprocessing",
         )
-        quality_hits = sum(1 for kw in quality_kw if kw in section)
+        quality_hits = sum(1 for key_word in quality_kw if key_word in section)
         quality_frac = min(1.0, quality_hits / 4.0)
 
         # Combine dataset provenance and quality indicators into a final score

@@ -14,9 +14,9 @@ import boto3
 s3 = boto3.client("s3")
 
 BUCKET_NAME = "cs461-team5-model-bucket"
-FILE_KEY = "name_id.txt"   # update these
+FILE_KEY = "name_id.txt"
 
-MAX_REPEAT_ALLOWED = 500   # adjust based on your needs
+MAX_REPEAT_ALLOWED = 500
 
 
 def is_unsafe_regex(pattern: str) -> str | None:
@@ -63,7 +63,7 @@ def is_unsafe_regex(pattern: str) -> str | None:
 
 
     # -------------------------------------------------------
-    # 3. Ambiguous alternation inside repetition: (a|aa)* 
+    # 3. Ambiguous alternation inside repetition: (a|aa)*
     #    → dangerous because one branch is prefix of another
     # -------------------------------------------------------
     repeated_groups = re.findall(r"\(([^)]+)\)([\*\+])", pattern)
@@ -85,8 +85,11 @@ def is_unsafe_regex(pattern: str) -> str | None:
 
 
 def lambda_handler(event, context):
-
-    # extract regex pattern
+    """
+    AWS Lambda entry point that accepts a regex pattern, validates it,
+    searches for matches in an S3-hosted metadata file and related README files,
+    and returns matching artifacts as a JSON response.
+    """
     try:
         body = json.loads(event.get("body", "{}"))
         pattern = body.get("regex")
@@ -152,8 +155,8 @@ def lambda_handler(event, context):
         if 'Contents' in page:
             for obj in page['Contents']:
                 object_key = obj['Key']
-                
-                # Check if the object is a README.md file (optional filtering, but good practice)
+
+                # Check if the object is a README.md file
                 if object_key.endswith('/README.md'):
                     print(f"Processing {object_key}")
                     # 2. Extract artifact_type and id from the key
@@ -164,14 +167,14 @@ def lambda_handler(event, context):
                         artifact_type = parts[1]
                         artifact_id = parts[2]
                         name = id_to_name_map.get(artifact_id, "Unknown Name")
-                        
+
                         # 3. Read the object content
                         s3_object = s3.get_object(Bucket=BUCKET_NAME, Key=object_key)
                         readme_content = s3_object['Body'].read().decode('utf-8')
-                        
+
                         # 4. Apply regex search
                         found_matches = re.findall(pattern, readme_content, re.IGNORECASE)
-                        
+
                         if found_matches:
                             # Add to matches list in the required format
                             matches.append({
@@ -179,7 +182,6 @@ def lambda_handler(event, context):
                                 "id": artifact_id,
                                 "type": artifact_type
                             })
-                            
                     except Exception as e:
                         print(f"Error processing {object_key}: {e}")
                         continue
