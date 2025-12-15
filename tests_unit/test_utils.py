@@ -1,10 +1,6 @@
-"""
-Unit tests for backend.Rate.metrics.utils
+"""Unit tests for utility functions in backend.Rate.metrics.utils.
 
-Covers:
-- fetch_hf_readme_text
-- query_genai
-- analyze_code
+Tests README fetching from Hugging Face, GenAI API integration, and code analysis.
 """
 
 import pytest
@@ -12,23 +8,28 @@ import backend.Rate.metrics.utils as ut
 
 
 class MockGetResp:
+    """Mock HTTP GET response object."""
     def __init__(self, status_code=200, text=""):
         self.status_code = status_code
         self.text = text
 
 
 class MockPostResp:
+    """Mock HTTP POST response object for GenAI API."""
     def __init__(self, json_data=None):
         self._json_data = json_data or {}
 
     def raise_for_status(self):
+        """Simulate successful HTTP response status."""
         return None
 
     def json(self):
+        """Return JSON response data."""
         return self._json_data
 
 
 def test_fetch_hf_readme_text_success(monkeypatch):
+    """Verify successful README fetch from Hugging Face returns content."""
     monkeypatch.setattr(ut, "_hf_model_id_from_url", lambda _: "owner/repo")
 
     def fake_get(url, timeout=10):
@@ -41,6 +42,7 @@ def test_fetch_hf_readme_text_success(monkeypatch):
 
 
 def test_fetch_hf_readme_text_non_200_returns_empty(monkeypatch):
+    """Verify that non-200 HTTP responses return empty string."""
     monkeypatch.setattr(ut, "_hf_model_id_from_url", lambda _: "owner/repo")
     monkeypatch.setattr(ut.requests, "get", lambda *a, **k: MockGetResp(status_code=404, text="nope"))
 
@@ -48,6 +50,7 @@ def test_fetch_hf_readme_text_non_200_returns_empty(monkeypatch):
 
 
 def test_fetch_hf_readme_text_malformed_model_id_returns_empty(monkeypatch):
+    """Verify that malformed model IDs return empty string gracefully."""
     # split("/") will fail -> should be caught and return ""
     monkeypatch.setattr(ut, "_hf_model_id_from_url", lambda _: "not_a_pair")
 
@@ -55,6 +58,7 @@ def test_fetch_hf_readme_text_malformed_model_id_returns_empty(monkeypatch):
 
 
 def test_fetch_hf_readme_text_request_exception_returns_empty(monkeypatch):
+    """Verify that network exceptions return empty string gracefully."""
     monkeypatch.setattr(ut, "_hf_model_id_from_url", lambda _: "owner/repo")
 
     def boom(*a, **k):
@@ -66,6 +70,7 @@ def test_fetch_hf_readme_text_request_exception_returns_empty(monkeypatch):
 
 
 def test_query_genai_success(monkeypatch):
+    """Verify successful GenAI API query with proper authentication and request format."""
     monkeypatch.setenv("PURDUE_GENAI_API_KEY", "abc123")
 
     def fake_post(url, headers=None, json=None, timeout=60):
@@ -86,6 +91,7 @@ def test_query_genai_success(monkeypatch):
 
 
 def test_query_genai_request_exception_returns_tuple(monkeypatch):
+    """Verify that GenAI API exceptions return tuple with error details."""
     monkeypatch.setenv("PURDUE_GENAI_API_KEY", "abc123")
 
     def fake_post(*a, **k):
@@ -101,10 +107,12 @@ def test_query_genai_request_exception_returns_tuple(monkeypatch):
 
 
 def test_analyze_code_syntax_error_returns_zero():
+    """Verify that code with syntax errors returns score of 0.0."""
     assert ut.analyze_code("def broken(:\n  pass") == 0.0
 
 
 def test_analyze_code_clean_code_scores_high():
+    """Verify that clean, well-documented code receives high quality score."""
     code = '''
 def add(a, b):
     """Add two numbers."""
@@ -117,6 +125,7 @@ x = add(1, 2)
 
 
 def test_analyze_code_penalties_reduce_score():
+    """Verify that code quality penalties reduce the overall score."""
     # Hits: missing docstring, long function (>50 body stmts), risky eval,
     # global usage, unused import, long line >120
     long_body = "\n".join(["    x = 1"] * 55)

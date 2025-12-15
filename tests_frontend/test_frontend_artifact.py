@@ -1,5 +1,4 @@
 """Frontend tests for the artifact page.
-
 Tests artifact display, interaction, and UI functionality.
 """
 
@@ -10,9 +9,7 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 
-# -----------------------------------------------------------------------------
-# 🔧 CONFIGURATION
-# -----------------------------------------------------------------------------
+
 TARGET_URL = "https://dkc81a64i5ewt.cloudfront.net/home.html"
 
 

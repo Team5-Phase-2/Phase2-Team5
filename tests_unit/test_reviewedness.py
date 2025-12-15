@@ -1,4 +1,8 @@
-# tests/test_reviewedness.py
+"""Unit tests for the Reviewedness metric.
+
+Tests code review quality by analyzing GitHub pull requests,
+reviews, and file changes for models and code repositories.
+"""
 
 "Unit Tests for the Reviewedness metric"
 
@@ -47,6 +51,7 @@ def _base(owner="owner", repo="repo"):
 
 
 def test_no_github_repo_found_returns_minus_one():
+    """Non-GitHub URL should return score of -1."""
     # Not github, not huggingface -> no extraction attempts -> -1
     score, latency = rv.reviewedness("https://example.com/not/github", "code", "data")
     assert score == -1
@@ -54,6 +59,7 @@ def test_no_github_repo_found_returns_minus_one():
 
 
 def test_hf_html_request_exception_returns_minus_one(monkeypatch):
+    """Hugging Face HTML fetch error should return score of -1."""
     # Force HF fetch to raise, triggering the except path in find_github_repo_from_hf_html
     def boom(*a, **k):
         raise RuntimeError("network down")
@@ -66,10 +72,7 @@ def test_hf_html_request_exception_returns_minus_one(monkeypatch):
 
 
 def test_hf_html_extracts_repo_and_scores_one(monkeypatch, mock_requests):
-    # Cover:
-    # - huggingface HTML fetch try-path
-    # - regex pattern matching loop
-    # - token header branch (we don't assert headers, but we execute the code path)
+    """Hugging Face HTML with GitHub link should extract repo and score well."""
     monkeypatch.setenv("GITHUB_TOKEN", "dummy_token")
 
     model_url = "https://huggingface.co/some/model"
@@ -96,6 +99,7 @@ def test_hf_html_extracts_repo_and_scores_one(monkeypatch, mock_requests):
 
 
 def test_pr_api_failure_returns_minus_one(mock_requests):
+    """GitHub API failure should return score of -1."""
     mock_requests[_prs_url("owner", "repo")] = MockResponse(status_code=500)
 
     score, latency = rv.reviewedness("https://github.com/owner/repo", "code", "data")

@@ -1,7 +1,29 @@
+"""
+Artifact Ingestion and S3 Upload Utility.
+
+This script automates the retrieval of code repositories, models, or datasets from
+external sources (HuggingFace or GitHub), bundles them into a ZIP archive, and
+uploads the result to a specified AWS S3 bucket.
+
+Workflow:
+1.  **Configuration:** Retrieves the S3 bucket name and HuggingFace token from AWS Systems Manager (SSM) Parameter Store in `us-east-2`.
+2.  **Source Detection:** Identifies if the provided URL belongs to HuggingFace or GitHub.
+3.  **Download:**
+    -   **HuggingFace:** Uses `snapshot_download` to retrieve models or datasets. Parses the URL to determine the repository type.
+    -   **GitHub:** Resolves the default branch via API and streams the repository archive as a ZIP file.
+4.  **Compression:** If the download results in a raw directory, it is compressed into a ZIP file.
+5.  **Upload:** The artifact is uploaded to S3 using the key pattern: `artifacts/{artifact_type}/{artifact_id}/artifact.zip`.
+6.  **Output:** Prints a JSON object containing the status and S3 location.
+
+Arguments:
+    --url           : Full URL to the source (e.g., https://huggingface.co/meta-llama/Llama-2-7b).
+    --artifact_id   : Unique identifier used for file naming and S3 paths.
+    --artifact_type : Category string (e.g., 'model', 'dataset', 'code') used in the S3 key.
+"""
+
 import os
 import re
 import json
-import shutil
 import zipfile
 import requests
 from urllib.parse import urlparse
@@ -31,20 +53,24 @@ HF_TOKEN = ssm.get_parameter(
     WithDecryption=True
 )["Parameter"]["Value"]
 
-# ===============================
-# Source Detection
-# ===============================
 def detect_source(url: str) -> str:
+    """Identify the source platform based on the provided URL.
+
+    Checks the URL against supported domains (HuggingFace, GitHub) to return
+    the specific source type. Raises a ValueError if the domain is unsupported.
+    """
     if "huggingface.co" in url:
         return "huggingface"
     if "github.com" in url:
         return "github"
     raise ValueError(f"Unsupported URL: {url}")
 
-# ===============================
-# HuggingFace Downloader
-# ===============================
 def download_huggingface(url, artifact_id, artifact_type):
+    """Download a repository snapshot from HuggingFace.
+
+    Parses the URL to determine if the target is a model or dataset, then uses
+    `snapshot_download` to fetch the repository contents to a local directory.
+    """
     parsed = urlparse(url)
     parts = parsed.path.strip("/").split("/")
 
@@ -66,10 +92,12 @@ def download_huggingface(url, artifact_id, artifact_type):
         token=HF_TOKEN,
     )
 
-# ===============================
-# GitHub Downloader
-# ===============================
 def download_github(url, artifact_id):
+    """Download a GitHub repository as a ZIP archive.
+
+    Queries the GitHub API to identify the default branch, then streams the
+    source code archive directly to a local ZIP file to minimize disk usage.
+    """   
     m = re.match(r"https?://github\.com/([^/]+)/([^/]+)", url)
     if not m:
         raise ValueError("Invalid GitHub URL")
@@ -91,10 +119,12 @@ def download_github(url, artifact_id):
 
     return local_zip
 
-# ===============================
-# Zip Directory
-# ===============================
 def zip_directory(src_dir, zip_path):
+    """Recursively compress a local directory into a ZIP file.
+
+    Walks the source directory tree and adds files to the archive using relative
+    paths to maintain the internal folder structure.
+    """
     with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zf:
         for root, _, files in os.walk(src_dir):
             for file in files:
@@ -102,10 +132,12 @@ def zip_directory(src_dir, zip_path):
                 arc = os.path.relpath(full, src_dir)
                 zf.write(full, arc)
 
-# ===============================
-# Main Router
-# ===============================
 def process_url(url, artifact_id, artifact_type):
+    """Orchestrate the artifact download, compression, and S3 upload.
+
+    Routes the URL to the appropriate downloader, ensures the final output is
+    compressed, uploads it to the S3 bucket, and returns the object metadata.
+    """
     source = detect_source(url)
     zip_path = os.path.join(WORK_DIR, f"{artifact_id}.zip")
 
@@ -144,4 +176,3 @@ if __name__ == "__main__":
     )
 
     print(json.dumps(result))
-

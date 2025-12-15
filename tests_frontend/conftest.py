@@ -1,5 +1,4 @@
 """Pytest configuration for frontend Selenium tests.
-
 Provides Chrome WebDriver fixtures and setup for UI testing.
 """
 

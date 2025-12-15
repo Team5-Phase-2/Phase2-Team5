@@ -1,3 +1,9 @@
+"""Unit tests for the Repository Fetch module.
+
+Tests downloading Hugging Face repositories, handling HTTP failures,
+and reading text files from downloaded repository directories.
+"""
+
 # tests/test_repo_fetch.py
 
 import sys
@@ -35,6 +41,7 @@ def repo_fetch_module():
 
 
 def test_download_creates_directory(repo_fetch_module, monkeypatch):
+    """Successful download should create output directory with files."""
     mock_resp = MagicMock(status_code=200, text="FILE CONTENT")
     monkeypatch.setattr(repo_fetch_module.requests, "get", lambda *a, **kw: mock_resp)
 
@@ -46,6 +53,7 @@ def test_download_creates_directory(repo_fetch_module, monkeypatch):
 
 
 def test_download_handles_http_failures(repo_fetch_module, monkeypatch):
+    """HTTP 404 response should result in empty directory."""
     monkeypatch.setattr(
         repo_fetch_module.requests,
         "get",
@@ -60,6 +68,7 @@ def test_download_handles_http_failures(repo_fetch_module, monkeypatch):
 
 
 def test_download_catches_request_exception(repo_fetch_module, monkeypatch):
+    """Request exception should be caught and result in empty directory."""
     def bad_get(*a, **kw):
         raise RuntimeError("network exploded")
 
@@ -73,16 +82,19 @@ def test_download_catches_request_exception(repo_fetch_module, monkeypatch):
 
 
 def test_read_text_if_exists_reads_file(repo_fetch_module, tmp_path):
+    """File that exists should be read and returned as string."""
     p = tmp_path / "README.md"
     p.write_text("hello world")
     assert repo_fetch_module.read_text_if_exists(tmp_path, "README.md") == "hello world"
 
 
 def test_read_text_if_exists_missing_file(repo_fetch_module, tmp_path):
+    """Missing file should return empty string."""
     assert repo_fetch_module.read_text_if_exists(tmp_path, "NOFILE.md") == ""
 
 
 def test_read_text_if_exists_with_read_error(repo_fetch_module, tmp_path, monkeypatch):
+    """Read error should be caught and empty string returned."""
     p = tmp_path / "BAD.txt"
     p.write_text("data")
 

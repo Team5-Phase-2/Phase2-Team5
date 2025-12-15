@@ -1,3 +1,10 @@
+"""Unit tests for the Performance Helper module.
+
+Tests performance claims detection in model documentation including metric
+extraction, date/version filtering, placeholder handling, and markdown table
+parsing for model evaluation results.
+"""
+
 import pytest
 from backend.Rate.perf_helper import (
     has_real_metrics,
@@ -11,21 +18,25 @@ from backend.Rate.perf_helper import (
 # ----------------------------------------------------------
 
 def test_detects_simple_metric_near_number():
+    """Simple metric keyword near percentage value should be detected."""
     text = "The model achieved accuracy of 92%."
     assert has_real_metrics(text) is True
 
 
 def test_no_metrics_returns_false():
+    """Text without metric keywords should return False."""
     text = "This model description contains no numeric scores."
     assert has_real_metrics(text) is False
 
 
 def test_metrics_word_without_number_returns_false():
+    """Metric keyword without accompanying number should return False."""
     text = "Our accuracy benchmark is described below but no value is given."
     assert has_real_metrics(text) is False
 
 
 def test_number_without_metric_word_returns_false():
+    """Number without metric keyword should return False."""
     text = "The system processed 2048 tokens per batch."
     assert has_real_metrics(text) is False
 
@@ -35,6 +46,7 @@ def test_number_without_metric_word_returns_false():
 # ----------------------------------------------------------
 
 def test_ignores_dates_and_versions_as_metrics():
+    """Dates and version numbers should not be treated as performance metrics."""
     text = """
     Version 2024-01-05 released.
     Accuracy section coming soon.
@@ -66,6 +78,7 @@ def test_placeholder_skips_section_but_entire_text_has_no_valid_metrics():
 
 
 def test_placeholder_only_returns_false():
+    """Placeholder text without any metrics should return False."""
     text = """
     evaluation results coming soon, more information needed.
     """
@@ -75,7 +88,8 @@ def test_placeholder_only_returns_false():
 # ----------------------------------------------------------
 # MODEL-INDEX OVERRIDE
 # ----------------------------------------------------------
-
+"""model-index metadata with metrics should be detected."""
+    
 def test_model_index_positive_override():
     text = """
     model-index:
@@ -91,12 +105,7 @@ def test_model_index_positive_override():
 # ----------------------------------------------------------
 
 def test_extract_eval_sections_when_headings_match():
-    """
-    Your implementation only extracts sections where the heading
-    *matches evaluation|results|benchmark|metrics* exactly.
-
-    Indentation breaks the regex, so we provide flush-left headings.
-    """
+    """Evaluation-like sections should be extracted when markdown headings match."""
     text = (
         "# Evaluation\naccuracy 93%\n\n"
         "# Results\nf1 0.88\n"
@@ -108,6 +117,7 @@ def test_extract_eval_sections_when_headings_match():
 
 
 def test_extract_eval_no_sections_returns_empty():
+    """Text without evaluation-like sections should return empty list."""
     text = "No proper markdown headings here."
     assert _extract_eval_like_sections(text.lower()) == []
 
@@ -116,7 +126,8 @@ def test_extract_eval_no_sections_returns_empty():
 # TABLE DETECTION
 # ----------------------------------------------------------
 
-def test_metric_table_detected_when_header_and_number_exist():
+def test_table_with_metric_values():
+    """Markdown table with metric header and numeric values should be detected."""
     text = """
 | Metric | Accuracy |
 |--------|----------|
@@ -128,6 +139,7 @@ def test_metric_table_detected_when_header_and_number_exist():
 
 
 def test_table_with_no_numbers_returns_false():
+    """Table with placeholder values instead of numbers should return False."""
     text = """
 | Metric | Accuracy |
 |--------|----------|
@@ -138,6 +150,7 @@ def test_table_with_no_numbers_returns_false():
 
 
 def test_table_with_metric_word_but_header_not_matching():
+    """Table without metric keywords in header should not be detected."""
     text = """
 | Name | Value |
 |------|--------|
@@ -147,16 +160,14 @@ def test_table_with_metric_word_but_header_not_matching():
     assert _looks_like_metric_table(text.lower()) is False
 
 
-# ----------------------------------------------------------
-# PROXIMITY RULE
-# ----------------------------------------------------------
-
 def test_metric_word_outside_window_fails():
+    """Metric word and number outside proximity window should not be detected."""
     text = "accuracy " + ("x" * 200) + " 95%"
     assert has_real_metrics(text) is False
 
 
 def test_metric_word_inside_window_succeeds():
+    """Metric word and number within proximity window should be detected."""
     text = "accuracy " + ("x" * 50) + " 95%"
     assert has_real_metrics(text) is True
 
@@ -166,7 +177,8 @@ def test_metric_word_inside_window_succeeds():
 # ----------------------------------------------------------
 
 def test_complex_mixed_readme():
-    """
+    """Mixed content with table and metric references should be properly detected.
+    
     The real code only detects metrics if:
     - metric word AND number coexist in same ~100-char window, OR
     - markdown table is correctly formatted (no indentation)
