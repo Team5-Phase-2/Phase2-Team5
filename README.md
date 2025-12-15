@@ -6,7 +6,7 @@ SecureModelHub is an open registry for machine learning models, developed in ass
 
 SecureModelHub uses a serverless architecture built on AWS Lambda, with the following components and data flow:
 
-- **Frontend**: A static web UI deployed via AWS CloudFront with Web Application Firewall (WAF) for security. Provides user interaction for browsing and accessing the registry.
+- **Frontend**: A static web UI deployed via AWS CloudFront with Web Application Firewall (WAF) for security. Provides user interaction for browsing and accessing the registry (URL: `https://dkc81a64i5ewt.cloudfront.net').
 - **API Gateway**: Routes requests to Lambda functions for artifact management.
 - **Lambda Functions**: Handle core operations such as model ingestion, rating, storage, and retrieval. Key functions include:
   - `Rate`: Computes trustworthiness metrics (e.g., license compliance, code quality, bus factor).
@@ -77,7 +77,7 @@ Data flow: User submits model URL → Rate Lambda analyzes → If approved, Uplo
 
 ## API or Invocation Examples
 
-SecureModelHub exposes RESTful endpoints via API Gateway (base URL: `https://dkc81a64i5ewt.cloudfront.net`). No authentication is required; the `X-Authorization` header is not enforced. Below are the implemented endpoints, matched to backend sub-directories:
+SecureModelHub exposes RESTful endpoints via API Gateway (base URL: `https://moy7eewxxe.execute-api.us-east-2.amazonaws.com/main`). No authentication is required; the `X-Authorization` header is not enforced. Below are the implemented endpoints, matched to backend sub-directories:
 
 ### /health (Health/)
 - **GET**: Heartbeat check
