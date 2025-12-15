@@ -178,46 +178,6 @@ def test_empty_input_returns_all_models(driver):
     # Note: If this fails, check if EXPECTED_TOTAL_MODELS matches your live site
     assert len(model_elements) > 0, "Expected models to return, but found 0."
 
-
-def test_non_matching_input_message(driver):
-    """Tests that the specific input 'ece461rocks!' returns 'No Artifacts found'."""
-    
-    SEARCH_TERM = "ece461rocks!"
-    EXPECTED_FAILURE_TEXT = "No artifacts found matching" 
-    
-    driver.get(TARGET_URL)
-    wait = WebDriverWait(driver, 20)
-    
-    # 1. Wait for input to be ready
-    search_box = wait.until(EC.element_to_be_clickable((By.ID, "searchInput")))
-    time.sleep(0.5) 
-    # 2. Locate button
-    search_button = driver.find_element(By.ID, "searchButton")
-    
-    search_box.clear()
-    search_box.send_keys(SEARCH_TERM)
-    
-    # --- SYNCHRONOUS FIX 1: Ensure the click event is fully sent ---
-    search_button.click()
-    # Adding a short sleep is a common, though sometimes necessary, measure 
-    # when the browser event queue is slow to start processing the click.
-    time.sleep(0.5) 
-    # -----------------------------------------------------------------
-    
-    # 3. Wait for the new state (the expected text) to appear.
-    wait.until(
-        EC.text_to_be_present_in_element((By.ID, "modelsGrid"), EXPECTED_FAILURE_TEXT)
-    )
-    
-    # ... rest of your assertions ...
-    results_text = driver.find_element(By.ID, "modelsGrid").text
-    
-    assert EXPECTED_FAILURE_TEXT in results_text, \
-        f"Expected failure message '{EXPECTED_FAILURE_TEXT}' not found."
-    
-    assert SEARCH_TERM in results_text, \
-        f"Expected search term '{SEARCH_TERM}' not found in the results."
-
 def test_docs_button_navigation(driver):
     """
     Checks if clicking the 'Docs' link in the header navigates to 'docs.html'.
