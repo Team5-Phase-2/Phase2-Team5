@@ -1,4 +1,8 @@
-# tests/test_metric_runner.py
+"""Unit tests for the Metric Runner module.
+
+Tests metric execution, artifact type validation, AWS Lambda invocation,
+and end-to-end metric calculation workflow with mocked external dependencies.
+"""
 
 import json
 import pytest
@@ -96,6 +100,7 @@ def mock_aws_clients():
 
 
 def test_missing_artifact_type(metric_runner):
+    """Missing artifact_type parameter should return 400 status code."""
     resp = metric_runner({"artifact_type": None, "source_url": None}, None)
     assert resp["statusCode"] == 400
 

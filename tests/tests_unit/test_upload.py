@@ -1,9 +1,7 @@
-"""
-Unit tests for backend.Upload.upload
+"""Unit tests for the Upload Lambda function.
 
-All AWS calls are mocked.
-No sys.modules tricks.
-CI-safe.
+Tests artifact upload to S3, presigned URL generation, and AWS service interactions
+with mocked boto3 clients. Validates error handling for missing configuration and fields.
 """
 
 import json
@@ -15,6 +13,7 @@ from botocore.exceptions import ClientError
 
 @pytest.fixture
 def mock_env(monkeypatch):
+    """Set up required environment variables for upload tests."""
     monkeypatch.setenv("REGISTRY_BUCKET", "test-bucket")
     monkeypatch.setenv("EC2_ID", "i-123456")
     monkeypatch.setenv("DOWNLOAD_SCRIPT_PATH", "/fake/script.py")
@@ -22,6 +21,7 @@ def mock_env(monkeypatch):
 
 @pytest.fixture
 def mock_boto(monkeypatch):
+    """Mock S3 and SSM services for upload tests."""
     s3 = MagicMock()
     ssm = MagicMock()
 
@@ -46,6 +46,7 @@ def mock_boto(monkeypatch):
 
 @pytest.fixture
 def base_event():
+    """Create a valid base API event for upload tests."""
     return {
         "artifact_type": "model",
         "model_url": "https://github.com/owner/repo",
@@ -56,6 +57,7 @@ def base_event():
 
 
 def test_missing_registry_bucket(monkeypatch, base_event):
+    """Verify that missing REGISTRY_BUCKET environment variable returns 500 error"""
     monkeypatch.delenv("REGISTRY_BUCKET", raising=False)
 
     resp = up.lambda_handler(base_event, None)
@@ -65,6 +67,7 @@ def test_missing_registry_bucket(monkeypatch, base_event):
 
 
 def test_missing_required_fields(mock_env):
+    """Verify that missing required fields in event returns 400 error"""
     resp = up.lambda_handler({}, None)
 
     assert resp["statusCode"] == 400
@@ -72,6 +75,7 @@ def test_missing_required_fields(mock_env):
 
 
 def test_successful_github_upload(mock_env, mock_boto, base_event, monkeypatch):
+    """Verify successful artifact upload from GitHub returns 200 status"""
     s3, ssm = mock_boto
 
     # Mock GitHub README call to fail safely

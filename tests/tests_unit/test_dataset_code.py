@@ -1,14 +1,17 @@
-# tests/test_dataset_code.py
+"""Unit tests for the Dataset and Code Score metric.
 
-import pytest
+Tests code and dataset URL detection, Hugging Face model ID extraction,
+and scoring logic for various combinations of present/missing resources.
+"""
+
 from unittest.mock import MagicMock
-import time
 
 from backend.Rate.metrics.dataset_code import dataset_and_code_score
 from backend.Rate.metrics import dataset_code as dc
 
 
 def test_both_urls_present_short_circuit():
+    """When both code and dataset URLs are present, return perfect score of 1.0."""
     score, latency = dataset_and_code_score(
         model_url="x",
         code_url="something",
@@ -19,6 +22,7 @@ def test_both_urls_present_short_circuit():
 
 
 def test_http_model_id_returns_zero(monkeypatch):
+    """Invalid HTTP model ID should return score of 0.0."""
     monkeypatch.setattr(
         dc,
         "_hf_model_id_from_url",
@@ -34,6 +38,7 @@ def test_http_model_id_returns_zero(monkeypatch):
 
 
 def test_code_only_returns_half(monkeypatch):
+    """When only code URL is present, return score of 0.5."""
     monkeypatch.setattr(
         dc,
         "_hf_model_id_from_url",
@@ -74,6 +79,7 @@ def test_dataset_only_returns_half(monkeypatch):
 
 
 def test_dataset_from_card_metadata(monkeypatch):
+    """When only dataset URL is present, return score of 0.5."""
     monkeypatch.setattr(
         dc,
         "_hf_model_id_from_url",

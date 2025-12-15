@@ -1,16 +1,22 @@
+"""Unit tests for the Run Metrics module.
+
+Tests the net score calculation algorithm including handling of missing metrics,
+negative scores, None values, and dictionary-based results from size_score metric.
+"""
+
 import pytest
 from backend.Rate.run_metrics import calculate_net_score, WEIGHTS
 
 
 def test_all_metrics_normal_values():
-    """All metrics present with valid numeric scores."""
+    """All metrics present with valid numeric scores should produce net score of 1.0."""
     results = {name: (1.0, 0) for name in WEIGHTS.keys()}
     score = calculate_net_score(results)
     assert score == 1.0  # all weights sum to 1, so perfect score
 
 
 def test_missing_some_metrics():
-    """Some metrics missing → should only average over those present."""
+    """Missing metrics should only average over those present."""
     results = {
         "ramp_up_time": (1.0, 0),
         "bus_factor": (0.5, 0),
@@ -21,7 +27,7 @@ def test_missing_some_metrics():
 
 
 def test_negative_scores_clamped_to_zero():
-    """Negative scores should be treated as zero."""
+    """Negative scores should be treated as zero in calculation."""
     results = {
         "ramp_up_time": (-5.0, 0),
         "bus_factor": (0.5, 0),

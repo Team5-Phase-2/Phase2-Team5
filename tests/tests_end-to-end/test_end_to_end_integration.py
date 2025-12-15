@@ -1,20 +1,24 @@
-# tests/test_end_to_end_integration.py
+"""Full end-to-end integration tests of the artifact rating system.
 
-"Full End to End Integration Tests of the Systems"
-"Test for both huggingface and github links "
-"Test for model and code"
+Tests the complete pipeline from metric calculation through artifact retrieval,
+rating, deletion, and bucket reset for both Hugging Face models and GitHub code repositories.
+"""
 
 import sys
 import os
 
-# Ensure backend/Rate is on the import path (matches legacy test behavior)
-RATE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "backend", "Rate"))
+# Ensure project root is on the import path so backend modules can be imported
+PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+if PROJECT_ROOT not in sys.path:
+    sys.path.insert(0, PROJECT_ROOT)
+
+# Also ensure backend/Rate is on path for any legacy imports
+RATE_DIR = os.path.join(PROJECT_ROOT, "backend", "Rate")
 if RATE_DIR not in sys.path:
     sys.path.insert(0, RATE_DIR)
 
 
 import json
-import os
 import boto3
 import pytest
 from moto import mock_aws
@@ -29,12 +33,14 @@ from backend.Upload.upload import lambda_handler as upload_handler
 
 @pytest.fixture
 def aws_env(monkeypatch):
+    """Configure AWS environment variables for testing."""
     monkeypatch.setenv("REGISTRY_BUCKET", "test-bucket")
     monkeypatch.setenv("AWS_DEFAULT_REGION", "us-east-2")
 
 
 @pytest.fixture
 def mock_s3_bucket(aws_env):
+    """Create a mocked S3 bucket for integration testing."""
     with mock_aws():
         s3 = boto3.client("s3", region_name="us-east-2")
         s3.create_bucket(
@@ -46,6 +52,7 @@ def mock_s3_bucket(aws_env):
 
 @pytest.fixture
 def mock_metrics(monkeypatch):
+    """Mock all metric functions to return passing scores."""
     from backend.Rate.metric_runner import METRIC_REGISTRY
 
     mocked_return = (0.9, 1)  # always passing
@@ -58,6 +65,7 @@ def mock_metrics(monkeypatch):
 
 @pytest.fixture
 def mock_lambda_invoke(monkeypatch):
+    """Mock Lambda invocation for metric execution."""
     def fake_invoke(FunctionName, InvocationType, Payload):
         payload = json.loads(Payload)
         response = upload_handler(payload, None)
@@ -84,6 +92,7 @@ def mock_utils(monkeypatch):
 
 @pytest.fixture
 def mock_ssm(monkeypatch):
+    """Mock AWS Systems Manager for EC2 commands."""
     fake_ssm = MagicMock()
     fake_ssm.send_command.return_value = {"Command": {"CommandId": "test"}}
 
@@ -100,6 +109,11 @@ def mock_ssm(monkeypatch):
     monkeypatch.setenv("DOWNLOAD_SCRIPT_PATH", "/tmp/fake_script.py")
 
 def copy_code_metadata_to_model(s3, bucket, artifact_id):
+    """Helper: Copy code artifact metadata to model path for testing.
+    
+    This allows the Get_Rate handler to find code artifact metadata
+    using the model artifact lookup path.
+    """
     src_key = f"artifacts/code/{artifact_id}/metadata.json"
     dst_key = f"artifacts/model/{artifact_id}/metadata.json"
 
@@ -118,6 +132,11 @@ def test_full_end_to_end_pipeline(
     mock_utils,
     mock_ssm,
 ):
+    """Test complete pipeline: run metrics -> get rating -> delete -> reset.
+    
+    Tests the full workflow for model artifacts including metric execution,
+    rating retrieval, artifact deletion, and bucket cleanup.
+    """
     # ------------------ 1. RUN METRICS ------------------
     event = {
         "artifact_type": "model",
@@ -163,7 +182,11 @@ def test_full_end_to_end_pipeline_code_artifact(
     mock_utils,
     mock_ssm,
 ):
-    # ------------------ 1. RUN METRICS ------------------
+    """Test complete pipeline for code artifacts: run metrics -> get rating -> delete -> reset.
+    
+    Tests the full workflow for code artifacts including metric execution,
+    rating retrieval with metadata copy, artifact deletion, and bucket cleanup.
+    """
     event = {
         "artifact_type": "code",
         "source_url": "https://github.com/test-user/test-repo",
@@ -206,5 +229,3 @@ def test_full_end_to_end_pipeline_code_artifact(
     # ------------------ 4. RESET BUCKET ------------------
     reset_resp = wipe_s3_bucket({}, None)
     assert reset_resp["statusCode"] == 200
-
-

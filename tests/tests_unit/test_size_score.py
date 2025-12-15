@@ -44,10 +44,12 @@ def mock_requests(monkeypatch):
 
 @pytest.fixture(autouse=True)
 def mock_model_id(monkeypatch):
+    """Mock the Hugging Face model ID extraction function."""
     monkeypatch.setattr(ss, "_hf_model_id_from_url", lambda _: "owner/model")
 
 
 def test_non_hf_url_returns_none(monkeypatch):
+    """Non-Hugging Face URLs should return None score."""
     monkeypatch.setattr(ss, "_hf_model_id_from_url", lambda _: "http://example.com")
 
     score, latency = ss.size_score("http://example.com", "", "")

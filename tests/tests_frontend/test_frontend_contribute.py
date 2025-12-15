@@ -1,5 +1,4 @@
 """Frontend tests for the contribute page.
-
 Tests artifact contribution form, validation, and submission functionality.
 """
 
@@ -10,9 +9,6 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait, Select
 from selenium.webdriver.support import expected_conditions as EC
 
-# --- Configuration ---
-# NOTE: Update TARGET_URL to point to your contribution page
-# If running locally: TARGET_CONTRIBUTE_URL = "http://localhost:8080/contribute.html"
 TARGET_CONTRIBUTE_URL = "https://dkc81a64i5ewt.cloudfront.net/contribute.html"
 
 # Define a short timeout for API interaction waits

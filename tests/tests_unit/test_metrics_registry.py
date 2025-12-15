@@ -1,12 +1,11 @@
-# tests/test_metrics_registry.py
+"""Unit tests for the Metrics Registry module.
 
-import sys
+Tests metric registry structure, entry format, key uniqueness, and proper
+initialization of all metric modules before registry import.
+"""
+
 import types
-
-# ===================================================================
-# PRE-INJECT FAKE METRIC MODULES ONLY
-# (NO scoring injection — critical!)
-# ===================================================================
+import sys
 
 _INJECTED_MODULES = []
 
@@ -42,10 +41,12 @@ from backend.Rate.metrics.registry import METRIC_REGISTRY
 # ===================================================================
 
 def test_registry_length():
+    """Registry should contain exactly 10 metric entries."""
     assert len(METRIC_REGISTRY) == 10
 
 
 def test_registry_entry_format():
+    """Each registry entry should be a (key, callable) tuple."""
     for key, fn in METRIC_REGISTRY:
         assert isinstance(key, str)
         assert key
@@ -53,6 +54,7 @@ def test_registry_entry_format():
 
 
 def test_registry_keys_exact():
+    """Registry should contain all expected metric keys."""
     expected = {
         "ramp_up_time",
         "bus_factor",
@@ -70,6 +72,7 @@ def test_registry_keys_exact():
 
 
 def test_no_duplicate_keys():
+    """Registry should not contain duplicate metric keys."""
     keys = [k for k, _ in METRIC_REGISTRY]
     assert len(keys) == len(set(keys))
 

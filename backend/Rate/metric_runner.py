@@ -9,9 +9,9 @@ response dict.
 import json
 import boto3
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from run_metrics import calculate_net_score
-from metrics.utils import fetch_hf_readme_text
-from metrics.registry import METRIC_REGISTRY
+from .run_metrics import calculate_net_score
+from .metrics.utils import fetch_hf_readme_text
+from .metrics.registry import METRIC_REGISTRY
 from botocore.config import Config
 
 lambda_client = boto3.client('lambda')

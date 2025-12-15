@@ -1,14 +1,17 @@
-# tests/test_dataset_quality.py
+"""Unit tests for the Dataset Quality metric.
 
-import pytest
+Tests dataset quality scoring based on README content, trusted datasets,
+and dataset quality indicators found in model documentation.
+"""
+
 from unittest.mock import MagicMock
-import time
 
 from backend.Rate.metrics.dataset_quality import dataset_quality
 from backend.Rate.metrics import dataset_quality as dq
 
 
 def test_empty_readme_returns_zero(monkeypatch):
+    """Empty README should return score of 0.0."""
     monkeypatch.setattr(dq, "_hf_model_id_from_url", lambda _: "owner/repo")
     monkeypatch.setattr(dq, "fetch_hf_readme_text", lambda _: "")
 
@@ -18,6 +21,7 @@ def test_empty_readme_returns_zero(monkeypatch):
 
 
 def test_dataset_from_api_metadata(monkeypatch):
+    """Dataset from API metadata with readme should score >= 0.6."""
     monkeypatch.setattr(dq, "_hf_model_id_from_url", lambda _: "owner/repo")
     monkeypatch.setattr(dq, "fetch_hf_readme_text", lambda _: "some text")
 
@@ -34,6 +38,7 @@ def test_dataset_from_api_metadata(monkeypatch):
 
 
 def test_strong_trusted_datasets(monkeypatch):
+    """Strong trusted datasets like BookCorpus and Wikipedia should score >= 0.9."""
     monkeypatch.setattr(dq, "_hf_model_id_from_url", lambda _: "owner/repo")
     monkeypatch.setattr(
         dq,
@@ -51,6 +56,7 @@ def test_strong_trusted_datasets(monkeypatch):
 
 
 def test_multiple_trusted_datasets(monkeypatch):
+    """Multiple trusted datasets like ImageNet and COCO should score between 0.8 and 0.95."""
     monkeypatch.setattr(dq, "_hf_model_id_from_url", lambda _: "owner/repo")
     monkeypatch.setattr(
         dq,
@@ -68,6 +74,7 @@ def test_multiple_trusted_datasets(monkeypatch):
 
 
 def test_single_trusted_dataset(monkeypatch):
+    """Single trusted dataset like CIFAR-10 should score between 0.6 and 0.9."""
     monkeypatch.setattr(dq, "_hf_model_id_from_url", lambda _: "owner/repo")
     monkeypatch.setattr(
         dq,
@@ -85,6 +92,7 @@ def test_single_trusted_dataset(monkeypatch):
 
 
 def test_dataset_section_detection(monkeypatch):
+    """Dataset section header should be properly detected and scored."""
     monkeypatch.setattr(dq, "_hf_model_id_from_url", lambda _: "owner/repo")
     monkeypatch.setattr(
         dq,
@@ -105,6 +113,7 @@ def test_dataset_section_detection(monkeypatch):
 
 
 def test_quality_keywords_boost_score(monkeypatch):
+    """Quality keywords like cleaning, deduplication, and splits should boost score."""
     monkeypatch.setattr(dq, "_hf_model_id_from_url", lambda _: "owner/repo")
     monkeypatch.setattr(
         dq,
@@ -124,8 +133,8 @@ def test_quality_keywords_boost_score(monkeypatch):
     score, _ = dataset_quality("x", "y", "z")
     assert score > 0.6
 
-
 def test_api_failure_is_ignored(monkeypatch):
+    """API failures should not prevent scoring from trusted dataset keywords."""
     monkeypatch.setattr(dq, "_hf_model_id_from_url", lambda _: "owner/repo")
     monkeypatch.setattr(dq, "fetch_hf_readme_text", lambda _: "trained on mnist")
 
@@ -138,8 +147,8 @@ def test_api_failure_is_ignored(monkeypatch):
     score, _ = dataset_quality("x", "y", "z")
     assert score >= 0.6
 
-
 def test_no_dataset_signals(monkeypatch):
+    """No dataset information should return score of 0.0."""
     monkeypatch.setattr(dq, "_hf_model_id_from_url", lambda _: "owner/repo")
     monkeypatch.setattr(dq, "fetch_hf_readme_text", lambda _: "just some text")
 
