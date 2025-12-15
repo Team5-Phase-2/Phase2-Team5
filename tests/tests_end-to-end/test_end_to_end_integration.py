@@ -7,14 +7,18 @@ rating, deletion, and bucket reset for both Hugging Face models and GitHub code 
 import sys
 import os
 
-# Ensure backend/Rate is on the import path (matches legacy test behavior)
-RATE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "backend", "Rate"))
+# Ensure project root is on the import path so backend modules can be imported
+PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+if PROJECT_ROOT not in sys.path:
+    sys.path.insert(0, PROJECT_ROOT)
+
+# Also ensure backend/Rate is on path for any legacy imports
+RATE_DIR = os.path.join(PROJECT_ROOT, "backend", "Rate")
 if RATE_DIR not in sys.path:
     sys.path.insert(0, RATE_DIR)
 
 
 import json
-import os
 import boto3
 import pytest
 from moto import mock_aws
